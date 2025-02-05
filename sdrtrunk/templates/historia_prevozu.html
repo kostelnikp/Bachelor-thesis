@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block body %}
+    <div id="main">
+        <h1>História prevozu</h1>
+
+        <h2>Filtre</h2>
+        <div id="filters">
+            <div class="filter-group">
+                <label for="filterEvent"><i class="fas fa-list"></i> Event:</label>
+                <input type="text" id="filterEvent" placeholder="Filtrovať podľa eventu">
+            </div>
+
+            <div class="filter-group">
+                <label for="filterSource"><i class="fas fa-sign-in-alt"></i> Zdroj:</label>
+                <input type="text" id="filterSource" placeholder="Filtrovať podľa zdroja">
+            </div>
+
+            <div class="filter-group">
+                <label for="filterDestination"><i class="fas fa-sign-out-alt"></i> Cieľ:</label>
+                <input type="text" id="filterDestination" placeholder="Filtrovať podľa cieľa">
+            </div>
+
+            <div class="filter-group">
+                <label for="filterFrequency"><i class="fas fa-wave-square"></i> Frekvencia:</label>
+                <input type="text" id="filterFrequency" placeholder="Filtrovať podľa frekvencie">
+            </div>
+        </div>
+
+        <table id="myTable" class="display stripe hover cell-border" style="width:100%">
+            <thead>
+            <tr>
+                <th>Časový záznam</th>
+                <th>Dĺžka</th>
+                <th>Event</th>
+                <th>Zdroj</th>
+                <th>Cieľ</th>
+                <th>Frekvencia</th>
+                <th>Timeslot</th>
+                <th>Ďalšie detaily</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for data in dmr_data %}
+                <tr>
+                    <td data-order="{{ data.timestamp|date:'U' }}">{{ data.timestamp|date:"d.m.Y H:i:s" }}</td>
+                    <td>{{ data.duration_s }}</td>
+                    <td>{{ data.event }}</td>
+                    <td>{{ data.source }}</td>
+                    <td>{{ data.destination }}</td>
+                    <td>{{ data.frequency }}</td>
+                    <td>{{ data.timeslot }}</td>
+                    <td>
+                        <button class="detail-btn" data-id="{{ data.id }}">Detaily</button>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <script src="https://cdn.datatables.net/plug-ins/1.13.6/sorting/datetime-moment.js"></script>
+
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script>
+        $(document).ready(function () {
+            $.fn.dataTable.moment('DD.MM.YYYY HH:mm:ss');
+
+            var table = $('#myTable').DataTable({
+                "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "All"]],
+                "order": [[0, "desc"]],
+                "columnDefs": [
+                    {"type": "datetime-moment", "targets": 0},
+                    {"type": "num", "targets": 1}
+                ],
+                "language": {
+                    "url": "https://cdn.datatables.net/plug-ins/1.13.6/i18n/sk.json"
+                }
+            });
+
+            $('#filterEvent').on('keyup change', function () {
+                table.column(2).search(this.value).draw();
+            });
+
+            $('#filterSource').on('keyup change', function () {
+                table.column(3).search(this.value).draw();
+            });
+
+            $('#filterDestination').on('keyup change', function () {
+                table.column(4).search(this.value).draw();
+            });
+
+            $('#filterFrequency').on('keyup change', function () {
+                table.column(5).search(this.value).draw();
+            });
+
+            $('.detail-btn').on('click', function () {
+                let eventId = $(this).data('id');
+
+                fetch(`/api/dmr-detail/${eventId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        Swal.fire({
+                            title: 'Detaily udalosti',
+                            html: `
+                                <b>Časový záznam:</b> ${data.timestamp} <br>
+                                <b>Dĺžka:</b> ${data.duration_s} s <br>
+                                <b>Event:</b> ${data.event} <br>
+                                <b>Zdroj:</b> ${data.source} <br>
+                                <b>Cieľ:</b> ${data.destination} <br>
+                                <b>Frekvencia:</b> ${data.frequency} MHz <br>
+                                <b>Timeslot:</b> ${data.timeslot} <br>
+                                <b>Color Code:</b> ${data.color_code} <br>
+                                <b>Event ID:</b> ${data.event_id} <br>
+                                <b>Detaily:</b> ${data.details} <br>
+                            `,
+                            icon: 'info',
+                            confirmButtonText: 'Zatvoriť'
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Chyba pri načítaní detailov:', error);
+                        Swal.fire('Chyba!', 'Nepodarilo sa načítať detaily.', 'error');
+                    });
+            });
+        });
+    </script>
+
+    <style>
+        #main {
+            padding: 20px;
+        }
+
+
+        #filters {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: start;
+            gap: 15px;
+            padding-bottom: 20px;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 8px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .filter-group label {
+            font-weight: bold;
+            font-size: 14px;
+            color: #555;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .filter-group i {
+            font-size: 14px;
+            color: rgb(0, 0, 0);
+        }
+
+        .filter-group input {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s ease;
+            width: 180px;
+        }
+
+        .filter-group input:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+        }
+
+        table.dataTable thead th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+
+        table.dataTable {
+            border: 1px solid #ccc;
+        }
+
+        table.dataTable tr:hover {
+            background-color: #eaeaea;
+        }
+
+        table.dataTable td, table.dataTable th {
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        #myTable_length {
+            margin-bottom: 20px;
+        }
+
+        .detail-btn {
+            padding: 5px 10px;
+            background: #7a7979;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+    </style>
+{% endblock %}

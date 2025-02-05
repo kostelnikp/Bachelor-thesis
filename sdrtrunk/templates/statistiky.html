@@ -1,0 +1,630 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block body %}
+    <div id="main">
+        <h1>Štatistiky</h1>
+
+        <div id="central-card">
+            <div id="left-card">
+                <div class="chart-container">
+                    <div class="filter-bar">
+                        <div class="date-input-container">
+                            <label for="start-date">
+                                <i class="fa fa-calendar"></i> Od:
+                            </label>
+                            <input type="text" id="start-date" class="date-picker" placeholder="Vyber dátum">
+                            <button class="clear-btn" onclick="clearDate('start-date')">
+                                <i class="fa fa-times"></i>
+                            </button>
+                        </div>
+                        <p>-</p>
+                        <div class="date-input-container">
+                            <label for="end-date">
+                                <i class="fa fa-calendar"></i> Do:
+                            </label>
+                            <input type="text" id="end-date" class="date-picker" placeholder="Vyber dátum">
+                            <button class="clear-btn" onclick="clearDate('end-date')">
+                                <i class="fa fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="bar-chart-timestamp" class="chart-background"></div>
+                </div>
+            </div>
+
+            <div id="right-card">
+                <div class="chart-container">
+                    <div id="pie-chart-event-count" class="chart-background"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="central-card">
+            <div id="left-card">
+                <div class="chart-container">
+                    <div id="frequency-chart" class="chart-background"></div>
+                </div>
+            </div>
+            <div id="right-card">
+                <div class="chart-container">
+                    <div class="chart-controls">
+                        <button id="toggle-chart-btn">Prepni na Sankey</button>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <label for="max-links">Max počet spojení:</label>
+                            <select id="max-links">
+                                <option value="5">5</option>
+                                <option value="10">10</option>
+                                <option value="20" selected>20</option>
+                                <option value="30">30</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="dynamic-chart" class="chart-background"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="central-card">
+            <div id="left-card">
+                <div class="chart-container">
+                    <div id="heatmap-chart" class="chart-background"></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <style>
+        #central-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin: 20px 0;
+            gap: 20px;
+        }
+
+        #left-card, #right-card {
+            width: 48%;
+        }
+
+        .chart-container {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            min-height: 480px;
+            margin-bottom: 20px;
+        }
+
+        .chart-background {
+            flex-grow: 1;
+            width: 100%;
+        }
+
+        .filter-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            background-color: #f8f9fa;
+            padding: 12px 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .date-input-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background-color: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .date-input-container label {
+            font-weight: bold;
+            font-size: 14px;
+            color: #555;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .date-input-container i {
+            font-size: 16px;
+            color: #7a7979;
+        }
+
+        .filter-bar input.date-picker {
+            width: 140px;
+            padding: 6px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            text-align: center;
+            background: none;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .filter-bar input.date-picker:hover {
+            background: #eef5ff;
+        }
+
+        .filter-bar input.date-picker:focus {
+            border: 1px solid #ffffff;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .clear-btn {
+            background-color: #d36363;
+            color: white;
+            padding: 3px 12px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .no-data-message {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            font-size: 22px;
+            font-weight: bold;
+            color: red;
+            text-align: center;
+            margin: 150px;
+        }
+
+        .chart-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .chart-controls label {
+            font-weight: bold;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+
+        .chart-controls button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .chart-controls select {
+            width: 70px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 5px;
+            text-align: center;
+        }
+
+
+    </style>
+
+    <!-- Highcharts CDN -->
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/modules/exporting.js"></script>
+    <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+
+    <script src="https://code.highcharts.com/modules/heatmap.js"></script>
+    <script src="https://code.highcharts.com/modules/sankey.js"></script>
+    <script src="https://code.highcharts.com/modules/dependency-wheel.js"></script>
+
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/sk.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+
+
+
+    <script>
+        function loadPieChart() {
+            fetch('/api/pie-chart/')
+                .then(response => response.json())
+                .then(data => {
+                    Highcharts.chart('pie-chart-event-count', {
+                        chart: {
+                            type: 'pie',
+                            backgroundColor: '#f8f9fa'
+                        },
+                        title: {
+                            text: 'Rozdelenie udalostí v histórii prevozu',
+                            style: {
+                                fontSize: '18px',
+                                fontWeight: 'bold',
+                                color: '#333333',
+                            },
+                        },
+                        exporting: {enabled: false},
+                        credits: {enabled: false},
+                        tooltip: {
+                            pointFormat: '<b>{point.name}</b>: {point.percentage:.1f} % (<b>{point.y}</b>)',
+                            style: {
+                                fontSize: '13px',
+                            }
+                        },
+                        plotOptions: {
+                            pie: {
+                                dataLabels: {
+                                    enabled: true,
+                                    format: '{point.name}: {point.percentage:.1f}%',
+                                    style: {
+                                        fontSize: '12px',
+                                    }
+                                },
+                                showInLegend: true
+                            }
+                        },
+                        series: [{
+                            name: 'Počet',
+                            colorByPoint: true,
+                            data: data
+                        }]
+                    });
+                });
+        }
+
+        function loadBarChart(startDate = '', endDate = '') {
+            let queryParams = new URLSearchParams();
+            if (startDate) queryParams.append('start_date', startDate);
+            if (endDate) queryParams.append('end_date', endDate);
+
+            fetch(`/api/bar-chart/?${queryParams.toString()}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (!data || !data.categories || !data.series || data.categories.length === 0 || data.series.length === 0) {
+                        document.getElementById('bar-chart-timestamp').innerHTML = '<p class="no-data-message">Žiadne údaje na zobrazenie</p>';
+                        return;
+                    }
+
+
+                    Highcharts.chart('bar-chart-timestamp', {
+                        chart: {
+                            type: 'column',
+                            backgroundColor: '#f8f9fa'
+                        },
+                        title: {
+                            text: 'Počet udalostí v čase',
+                            style: {
+                                fontSize: '18px',
+                                fontWeight: 'bold',
+                                color: '#333333',
+                            },
+                        },
+                        subtitle: {
+                            text: `Časový rozsah: ${startDate ? new Date(startDate).toLocaleDateString('sk-SK', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                            }) : 'začiatok'} - ${endDate ? new Date(endDate).toLocaleDateString('sk-SK', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                            }) : 'koniec'}`,
+                            style: {
+                                fontSize: '14px',
+                                color: '#666666',
+                                padding: '0 0 10px 0'
+                            },
+                        },
+                        exporting: {enabled: false},
+                        credits: {enabled: false},
+                        xAxis: {
+                            categories: data.categories,
+                            title: {text: 'Čas'},
+                            labels: {
+                                style: {
+                                    fontSize: '12px',
+                                }
+                            }
+                        },
+                        yAxis: {
+                            title: {text: 'Počet udalostí'},
+                            labels: {
+                                style: {
+                                    fontSize: '12px',
+                                }
+                            }
+                        },
+                        tooltip: {
+                            shared: true,
+                        },
+                        plotOptions: {
+                            column: {
+                                stacking: 'normal',
+                                borderWidth: 0,
+                                shadow: true,
+                            }
+                        },
+                        series: data.series
+                    });
+                });
+        }
+
+        function loadFrequencyChart() {
+            fetch('/api/frequency-chart/')
+                .then(response => response.json())
+                .then(data => {
+                    Highcharts.chart('frequency-chart', {
+                        chart: {
+                            type: 'bar',
+                            backgroundColor: '#f8f9fa'
+                        },
+                        title: {
+                            text: 'Najvyužívanejšie frekvencie',
+                            style: {
+                                fontSize: '18px',
+                                fontWeight: 'bold',
+                                color: '#333333',
+                            },
+                        },
+                        exporting: {enabled: false},
+                        credits: {enabled: false},
+                        xAxis: {
+                            categories: data.categories,
+                            title: {text: 'Frekvencia [MHz]'},
+                            labels: {
+                                style: {
+                                    fontSize: '12px',
+                                }
+                            }
+                        },
+                        yAxis: {
+                            title: {text: 'Počet udalostí'},
+                            allowDecimals: false,
+                            labels: {
+                                style: {
+                                    fontSize: '12px',
+                                }
+                            }
+                        },
+                        tooltip: {
+                            shared: true,
+                        },
+                        legend: {
+                            enabled: false
+                        },
+                        series: [{
+                            name: 'Počet udalostí',
+                            data: data.counts,
+                            color: '#007bff'
+                        }]
+                    });
+                });
+        }
+
+        let isChord = true;
+        let maxLinks = 30;
+
+        document.getElementById("toggle-chart-btn").addEventListener("click", function () {
+            isChord = !isChord;
+            this.textContent = isChord ? "Prepni na Sankey" : "Prepni na Chord";
+            loadDynamicChart();
+        });
+
+        document.getElementById("max-links").addEventListener("change", function () {
+            maxLinks = parseInt(this.value, 10);
+            loadDynamicChart();
+        });
+
+        function loadDynamicChart() {
+            let maxLinks = document.getElementById("max-links").value || 30;
+
+            fetch(`/api/chord-chart/?max_links=${maxLinks}`)
+                .then(response => response.json())
+                .then(data => {
+                    Highcharts.chart('dynamic-chart', {
+                        chart: {
+                            type: isChord ? 'dependencywheel' : 'sankey',
+                            backgroundColor: '#f8f9fa',
+                            height: 'auto',
+                        },
+                        title: {
+                            text: isChord ? 'Komunikačné toky (Chord)' : 'Komunikačné toky (Sankey)',
+                            style: {fontSize: '18px', fontWeight: 'bold', color: '#333'}
+                        },
+                        credits: {enabled: false},
+                        exporting: {enabled: false},
+                        tooltip: {
+                            useHTML: true,
+                            formatter: function () {
+                                if (this.point.isNode) {
+                                    return `<span style="font-size:14px"><b>${this.point.name}</b></span>`;
+                                } else {
+                                    return `<span style="font-size:14px"><b>${this.point.from} → ${this.point.to}</b></span><br>
+                                    <span style="font-size:14px;"><b>${this.point.weight}</b> udalostí</span>`;
+                                }
+                            },
+                            style: {fontSize: '14px'}
+                        },
+                        series: [{
+                            keys: ['from', 'to', 'weight'],
+                            data: data.data,
+                            layoutAlgorithm: 'symmetric',
+                            name: 'Komunikácie',
+                            type: isChord ? 'dependencywheel' : 'sankey',
+                            dataLabels: {
+                                enabled: true,
+                                color: '#000',
+                                style: {fontSize: '11px', fontWeight: 'bold'},
+                            },
+                            borderWidth: 0,
+                            colors: Highcharts.getOptions().colors.slice(0, 10)
+                        }],
+                        accessibility: {
+                            point: {descriptionFormat: '{index}. {point.from} to {point.to}, weight: {point.weight}.'}
+                        }
+                    });
+                });
+        }
+
+
+        function loadHeatmapChart() {
+            fetch('/api/heatmap-chart/')
+                .then(response => response.json())
+                .then(data => {
+                    Highcharts.chart('heatmap-chart', {
+                        chart: {
+                            type: 'heatmap',
+                            backgroundColor: '#f8f9fa',
+                        },
+                        title: {
+                            text: 'Časová distribúcia udalostí podľa dňa v týždni',
+                            style: {
+                                fontSize: '20px',
+                                fontWeight: 'bold',
+                                color: '#333333',
+                            },
+                        },
+                        xAxis: {
+                            categories: ['Pondelok', 'Utorok', 'Streda', 'Štvrtok', 'Piatok', 'Sobota', 'Nedeľa'],
+                            title: {text: 'Deň v týždni'},
+                            labels: {
+                                style: {fontSize: '14px', fontWeight: 'bold', color: '#333333'}
+                            },
+                            tickmarkPlacement: 'on',
+                            lineWidth: 1
+                        },
+                        yAxis: {
+                            categories: Array.from({length: 24}, (_, i) => `${i}:00`),
+                            title: {text: 'Hodina dňa'},
+                            labels: {
+                                style: {fontSize: '12px', color: '#666666'}
+                            },
+                            reversed: true,
+                            gridLineWidth: 0.5
+                        },
+                        colorAxis: {
+                            min: 0,
+                            minColor: '#f2f2ff',
+                            maxColor: '#22006f',
+                            stops: [
+                                [0, '#f2f2ff'],
+                                [0.3, '#97b3ff'],
+                                [0.6, '#3f72ff'],
+                                [0.9, '#001a66'],
+                                [1, '#22006f']
+                            ]
+                        },
+                        legend: {
+                            align: 'right',
+                            layout: 'vertical',
+                            margin: 25,
+                            verticalAlign: 'middle',
+                            y: 0,
+                            symbolHeight: 300
+                        },
+                        tooltip: {
+                            style: {
+                                fontSize: '13px',
+                                color: '#333333',
+                            },
+                            borderRadius: 8,
+                            borderWidth: 0,
+                            formatter: function () {
+                                return `<b style="font-size:14px">${this.series.xAxis.categories[this.point.x]}</b><br>
+                                <b>Hodina:</b> ${this.series.yAxis.categories[this.point.y]}<br>
+                                <b>Počet udalostí:</b> ${this.point.value}`;
+                            }
+                        },
+                        series: [{
+                            name: 'Počet udalostí',
+                            borderWidth: 1,
+                            data: data.data,
+                            dataLabels: {
+                                enabled: true,
+                                inside: true,
+                                allowOverlap: true,
+                                color: '#000000',  // Vynúti čiernu farbu textu pre všetky bunky
+                                style: {
+                                    fontSize: '12px',
+                                    fontWeight: 'bold',
+                                }
+                            }
+                        }],
+                        plotOptions: {
+                            series: {
+                                animation: {
+                                    duration: 1500
+                                },
+                                borderRadius: 4
+                            }
+                        },
+                        credits: {
+                            enabled: false
+                        },
+                        exporting: {
+                            enabled: false
+                        }
+
+                    });
+                });
+        }
+
+        function formatDateForAPI(dateString) {
+            if (!dateString) return "";
+            let parts = dateString.split(".");
+            return `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+
+
+        function applyFilters() {
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            let startFormatted = formatDateForAPI(startDate);
+            let endFormatted = formatDateForAPI(endDate);
+
+            loadBarChart(startFormatted, endFormatted);
+        }
+
+        function loadCharts() {
+            loadPieChart();
+            loadBarChart();
+            loadFrequencyChart();
+            loadDynamicChart();
+            loadHeatmapChart();
+        }
+
+        function clearDate(id) {
+            document.getElementById(id).value = "";
+            applyFilters();
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            loadCharts();
+            clearDate('start-date');
+            clearDate('end-date');
+
+            flatpickr(".date-picker", {
+                dateFormat: "d.m.Y",
+                locale: "sk",
+                allowInput: true,
+                static: true,
+                onChange: applyFilters,
+                position: "start"
+            });
+
+        });
+    </script>
+
+{% endblock %}

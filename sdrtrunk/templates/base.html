@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Aplikácia pre monitoring DMR prevádzky cez SDR</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <style>
+        body {
+            font-family: "Lato", sans-serif;
+            margin: 0;
+            display: flex;
+        }
+
+        .sidenav {
+            height: 100vh;
+            width: 250px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: #111;
+            overflow-y: auto;
+            padding-top: 60px;
+            transition: width 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidenav a {
+            padding: 15px 25px;
+            text-decoration: none;
+            font-size: 18px;
+            color: #818181;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: color 0.3s;
+        }
+
+        .sidenav a:hover {
+            color: #f1f1f1;
+        }
+
+        .sidenav.collapsed {
+            width: 60px;
+        }
+
+        .sidenav.collapsed a {
+            justify-content: center;
+            padding: 15px 0;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .sidenav.collapsed a span {
+            display: none;
+        }
+
+        #toggle-button {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            font-size: 20px;
+            background-color: #111;
+            color: white;
+            border: none;
+            cursor: pointer;
+            padding: 10px;
+            z-index: 1000;
+        }
+
+        #main {
+            margin-left: 250px;
+            padding: 16px;
+            flex-grow: 1;
+            transition: margin-left 0.3s;
+        }
+
+        .sidenav.collapsed + #main {
+            margin-left: 60px;
+        }
+
+        @media screen and (max-width: 768px) {
+            .sidenav {
+                width: 200px;
+            }
+
+            .sidenav.collapsed {
+                width: 50px;
+            }
+
+            #main {
+                margin-left: 200px;
+            }
+
+            .sidenav.collapsed + #main {
+                margin-left: 50px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<button id="toggle-button" onclick="toggleMenu()">&#9776;</button>
+<div class="sidenav collapsed" id="sidenav">
+    <a href="{% url 'prehlad' %}">
+        <span>Prehľad</span>
+    </a>
+    <a href="{% url 'historia_prevozu' %}">
+        <span>História prevozu</span>
+    </a>
+    <a href="{% url 'mapa' %}">
+        <span>Mapa</span>
+    </a>
+    <a href="{% url 'statistiky' %}">
+        <span>Štatistiky</span>
+    </a>
+    <a href="{% url 'admin:index' %}">
+        <span>Admin</span>
+    </a>
+</div>
+
+{% block body %}
+{% endblock %}
+
+<script>
+    function toggleMenu() {
+        const sidenav = document.getElementById("sidenav");
+        sidenav.classList.toggle("collapsed");
+    }
+</script>
+
+</body>
+</html>

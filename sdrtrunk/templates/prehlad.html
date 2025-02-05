@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block body %}
+    <div id="main">
+        <h1>Prehľad</h1>
+
+        <div class="stat-container">
+            <div class="stat-card">
+                <h3>Celkový počet udalostí</h3>
+                <p id="total-events">Načítavam...</p>
+            </div>
+
+            <div class="stat-card">
+                <h3>Posledná zaznamenaná udalosť</h3>
+                <p id="last-event">Načítavam...</p>
+            </div>
+
+            <div class="stat-card">
+                <h3>Počet unikátnych zdrojov</h3>
+                <p id="unique-sources">Načítavam...</p>
+            </div>
+
+            <div class="stat-card">
+                <h3>Počet unikátnych cieľov</h3>
+                <p id="unique-destinations">Načítavam...</p>
+            </div>
+        </div>
+
+        <div class="stat-container">
+            <div class="stat-card">
+                <h3>Priemerná dĺžka komunikácie</h3>
+                <p id="mean-duration">Načítavam...</p>
+            </div>
+
+            <div class="stat-card">
+                <h3>Najčastejšie používaná frekvencia</h3>
+                <p id="most_used_frequency">Načítavam...</p>
+            </div>
+        </div>
+
+        <div class="stat-container">
+            <div class="stat-card">
+                <h3>Monitorovaná frekvencia</h3>
+                <p id="monitored-frequency">Načítavam...</p>
+
+                <label for="new-frequency" id="new-frequency-label">Zadajte novú frekvenciu:</label>
+                <input type="text" id="new-frequency" placeholder="Načítavam...">
+
+                <button id="update-frequency-btn" onclick="updateMonitoredFrequency()">Uložiť</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .stat-container {
+            display: flex;
+            justify-content: space-around;
+            margin: 40px 0 0 0;
+            gap: 20px;
+        }
+
+        .stat-card {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 30%;
+            transition: transform .2s;
+        }
+
+        .stat-card:hover {
+            transform: scale(1.02);
+        }
+
+        .stat-card p {
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 10px;
+            color: #007bff;
+        }
+
+        .stat-card input {
+            width: 90%;
+            padding: 8px;
+            margin: 10px 0;
+            font-size: 14px;
+            text-align: center;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            transition: border-color 0.3s;
+        }
+
+        .stat-card input:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+
+        .stat-card button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px;
+            width: 100%;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-size: 16px;
+        }
+
+        .stat-card button:hover {
+            background-color: #0056b3;
+        }
+
+        #new-frequency-label {
+            font-size: 18px;
+            font-weight: bold;
+        }
+    </style>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        function loadDashboardData() {
+            fetch('/api/prehlad-data/')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('total-events').innerText = data.event_count;
+
+                    if (data.last_event && data.last_event.timestamp) {
+                        document.getElementById('last-event').innerText =
+                            `${formatDate(data.last_event.timestamp)} - ${data.last_event.event}`;
+                    } else {
+                        document.getElementById('last-event').innerText = "Žiadne údaje";
+                    }
+
+                    document.getElementById('unique-sources').innerText = data.unique_sources;
+                    document.getElementById('unique-destinations').innerText = data.unique_destinations;
+                    document.getElementById('mean-duration').innerText = data.mean_duration + " s";
+                    document.getElementById('most_used_frequency').innerText = data.most_used_frequency + " MHz";
+                })
+                .catch(error => console.error("Chyba pri načítaní údajov:", error));
+        }
+
+        function loadMonitoredFrequency() {
+            fetch('/api/get-monitored-frequency/')
+                .then(response => response.json())
+                .then(data => {
+                    let frequencyText = data.monitored_frequency || "Neznáma frekvencia";
+                    document.getElementById('monitored-frequency').innerText = frequencyText;
+                    document.getElementById('new-frequency').placeholder = data.monitored_frequency;
+                })
+                .catch(error => console.error("Chyba pri načítaní frekvencie:", error));
+        }
+
+        function updateMonitoredFrequency() {
+            let newFrequency = document.getElementById('new-frequency').value.trim();
+
+            if (!newFrequency || isNaN(newFrequency)) {
+                Swal.fire('Chyba!', 'Zadajte platnú číselnú hodnotu!');
+                return;
+            }
+
+            fetch('/api/update-monitored-frequency/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({"frequency": newFrequency})
+            })
+                .then(response => response.json())
+                .then(data => {
+                    Swal.fire({
+                        title: data.message || "Frekvencia bola aktualizovaná!",
+                        icon: 'success',
+                        confirmButtonText: 'OK'
+                    });
+                    document.getElementById('new-frequency').value = "";
+                    loadMonitoredFrequency();
+                })
+                .catch(error => console.error("Chyba pri aktualizácii frekvencie:", error));
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleString('sk-SK', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            loadDashboardData();
+            loadMonitoredFrequency();
+        });
+    </script>
+
+{% endblock %}

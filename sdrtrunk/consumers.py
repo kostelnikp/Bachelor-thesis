@@ -68,10 +68,7 @@ class SDRTrunkConsumer(WebsocketConsumer):
             r'TIMESTAMP:\s+(?P<timestamp>.*?)\s+'
             r'FREQUENCY:\s+(?P<frequency>[\d\.]+)\s+'
             r'DMR DECODE EVENT:\s+GPS\s+'
-            r'IDS:\s*(?P<ids>[\d,]+)\s+'
-            r'(?:CHANNEL:\s*(?P<channel>[\w\s\.]+)\s+)?'
-            r'DETAILS:\s*(?P<details>.*?)\s+'
-            r'LOCATION:\s*(?P<latitude>[\d,\.]+[NS])\s+(?P<longitude>[\d,\.]+[EW])\s+'
+            r'(?P<fields>.*?)'
             r'EVENT\s+ID:\s+(?P<event_id>\d+)'
         )
 
@@ -91,6 +88,49 @@ class SDRTrunkConsumer(WebsocketConsumer):
             raise ValueError(f"Nepodarilo sa parseovať data z reťazca: {text_data}")
 
         data = match.groupdict()
+
+        if event_type == "GPS":
+            fields = data.get("fields", "")
+
+            # Extrakcia LOCATION (GPS súradníc)
+            location_match = re.search(
+                r'LOCATION:\s*(?P<latitude>[\d,\.]+[NS])\s+(?P<longitude>[\d,\.]+[EW])',
+                fields
+            )
+            if location_match:
+                data["latitude"] = location_match.group("latitude")
+                data["longitude"] = location_match.group("longitude")
+
+            # Extrakcia IDS
+            ids_match = re.search(
+                r'IDS:\s*(?P<ids>.+?)(?=\s+(?:DURATION:|CHANNEL:|TIMESLOT:|DETAILS:|LOCATION:))',
+                fields
+            )
+            if ids_match:
+                data["ids"] = ids_match.group("ids").strip()
+
+            # Extrakcia DURATION (ak je prítomná)
+            duration_match = re.search(r'DURATION:\s*(?P<duration>\d+)', fields)
+            if duration_match:
+                data["duration"] = duration_match.group("duration")
+
+            # Extrakcia CHANNEL (ak je prítomný)
+            channel_match = re.search(r'CHANNEL:\s*(?P<channel>[\w\s\.]+)', fields)
+            if channel_match:
+                data["channel"] = channel_match.group("channel").strip()
+
+            # Extrakcia TIMESLOT (ak je prítomný)
+            timeslot_match = re.search(r'TIMESLOT:\s*(?P<timeslot>-?\d+)', fields)
+            if timeslot_match:
+                data["timeslot"] = timeslot_match.group("timeslot")
+
+            # Extrakcia DETAILS (ak je prítomné)
+            details_match = re.search(
+                r'DETAILS:\s*:? ?(?P<details>.*?)(?=\s+(?:IDS:|DURATION:|CHANNEL:|TIMESLOT:|LOCATION:))',
+                fields
+            )
+            if details_match:
+                data["details"] = details_match.group("details").strip()
 
         # Uloženie eventu do parsed_data, aby bol dostupný pre databázu
         data["event"] = event_type
@@ -163,6 +203,14 @@ class SDRTrunkConsumer(WebsocketConsumer):
             else:
                 print("⚠️ Chyba: GPS súradnice neboli nájdené v parsed_data!")
 
+            if data.get("ids_numbers"):
+                last_id = data["ids_numbers"][-1]
+                if data.get("ids_aliases"):
+                    data["source"] = f"{last_id},{''.join(data['ids_aliases'])}"
+                else:
+                    data["source"] = last_id
+
+                print(data["source"])
         return data
 
     def receive(self, text_data):
@@ -175,9 +223,8 @@ class SDRTrunkConsumer(WebsocketConsumer):
             if not parsed_data.get("event"):
                 raise ValueError("Event cannot be NULL!")
 
-            print("Parsed data:", parsed_data)
             if parsed_data.get("event") == "GPS":
-                gps_id = parsed_data.get("ids_numbers")[0] if parsed_data.get("ids_numbers") else None
+                gps_id = parsed_data.get("source") if parsed_data.get("source") else None
 
                 if gps_id:
                     dmr_instance = DMRData.objects.filter(source=gps_id).last()
@@ -191,9 +238,10 @@ class SDRTrunkConsumer(WebsocketConsumer):
                             latitude=parsed_data.get("latitude"),
                             longitude=parsed_data.get("longitude")
                         )
-
                     else:
                         print(f"⚠️ GPS event {gps_id} nemá priradený DMR event!")
+
+
 
             else:
                 DMRData.objects.create(

@@ -25,3 +25,19 @@ class DMRData(models.Model):
     class Meta:
         verbose_name = "DMR Data"
         verbose_name_plural = "DMR Data"
+
+
+class GPSData(models.Model):
+    dmr_data = models.OneToOneField(DMRData, on_delete=models.CASCADE, related_name="gps_data")
+    latitude = models.DecimalField(max_digits=10, decimal_places=6)
+    longitude = models.DecimalField(max_digits=10, decimal_places=6)
+
+    def __str__(self):
+        formatted_timestamp = self.dmr_data.timestamp.strftime("%Y-%m-%d %H:%M:%S") if self.dmr_data.timestamp else "N/A"
+
+
+        return f"GPS Data ({self.latitude}, {self.longitude}) for Event: {formatted_timestamp}, Source: {self.dmr_data.source}"
+
+    class Meta:
+        verbose_name = "GPS Data"
+        verbose_name_plural = "GPS Data"

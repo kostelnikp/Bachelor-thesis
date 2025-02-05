@@ -14,8 +14,7 @@ from rest_framework.views import APIView
 import os
 import xml.etree.ElementTree as ET
 
-from .models import DMRData
-
+from .models import DMRData, GPSData
 
 XML_FILE_PATH = r"C:\Users\koste\SDRTrunk\playlist\test.xml"
 SDRTRUNK_PATH = r"D:\sdr-trunk-0.6.1\bin\sdr-trunk.bat"
@@ -122,6 +121,27 @@ def restart_sdrtrunk():
 
     except Exception as e:
         print(f"❌ Chyba pri reštarte SDRTrunk: {str(e)}")
+
+def get_gps_data(request):
+    """
+    API endpoint na získanie všetkých GPS súradníc z databázy.
+    """
+    gps_records = GPSData.objects.select_related("dmr_data").all()
+
+    gps_data = [
+        {
+            "latitude": gps.latitude,
+            "longitude": gps.longitude,
+            "event_id": gps.dmr_data.event_id,
+            "source": gps.dmr_data.source,
+            "destination": gps.dmr_data.destination,
+            "timestamp": gps.dmr_data.timestamp.strftime("%Y-%m-%d %H:%M:%S") if gps.dmr_data.timestamp else "",
+            "details": gps.dmr_data.details
+        }
+        for gps in gps_records
+    ]
+
+    return JsonResponse({"gps_data": gps_data})
 
 
 class PieChartData(APIView):

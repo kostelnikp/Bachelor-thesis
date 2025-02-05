@@ -2,41 +2,66 @@
 {% load static %}
 
 {% block body %}
-<div id="main">
-    <h1>Mapa udalostí</h1>
+    <div id="main">
+        <h1>Mapa udalostí</h1>
 
-    <div class="map-container">
-        <div id="map"></div>
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
     </div>
-</div>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-<style>
-    .map-container {
-        background-color: #f8f9fa;
-        border-radius: 12px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        text-align: center;
-        width: 100%;
-        margin: auto;
-    }
+    <style>
+        .map-container {
+            background-color: #f8f9fa;
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 100%;
+            margin: auto;
+        }
 
-    #map {
-        width: 100%;
-        height: 550px;
-        border-radius: 8px;
-    }
-</style>
+        #map {
+            width: 100%;
+            height: 550px;
+            border-radius: 8px;
+        }
+    </style>
 
-<script>
-    var map = L.map('map').setView([49.8356, 18.2925], 10);
+    <script>
+        var map = L.map('map').setView([49.8356, 18.2925], 10);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
 
-</script>
+        function loadGpsData() {
+            fetch("{% url 'get_gps_data' %}")  // 🟢 Používame Django URL
+                .then(response => response.json())
+                .then(data => {
+                    data.gps_data.forEach(point => {
+                        var marker = L.marker([point.latitude, point.longitude]).addTo(map);
+                        marker.bindPopup(`
+                        <b>Event ID:</b> ${point.event_id} <br>
+                        <b>Zdroj:</b> ${point.source || "Neznámy"} <br>
+                        <b>Cieľ:</b> ${point.destination || "Neznámy"} <br>
+                        <b>Čas:</b> ${point.timestamp} <br>
+                        <b>Detaily:</b> ${point.details || "Žiadne"}
+                    `);
+                    });
+                })
+                .catch(error => console.error("❌ Chyba pri načítaní GPS dát:", error));
+        }
+
+        // 🔄 Načítanie bodov pri načítaní stránky
+        document.addEventListener("DOMContentLoaded", function () {
+            loadGpsData();
+
+        });
+
+
+    </script>
 
 {% endblock %}

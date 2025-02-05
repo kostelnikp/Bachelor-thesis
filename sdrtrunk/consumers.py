@@ -68,9 +68,10 @@ class SDRTrunkConsumer(WebsocketConsumer):
             r'TIMESTAMP:\s+(?P<timestamp>.*?)\s+'
             r'FREQUENCY:\s+(?P<frequency>[\d\.]+)\s+'
             r'DMR DECODE EVENT:\s+GPS\s+'
-            r'IDS:\s*(?P<ids>.*?)\s+'
-            r'(?:CHANNEL:\s*(?P<channel>[\w\s\.]+)\s+)?' 
-            r'DETAILS:\s*(?:LOCATION:)?\s*(?P<latitude>[\d\.,]+[NS])\s+(?P<longitude>[\d\.,]+[EW])\s+'
+            r'IDS:\s*(?P<ids>[\d,]+)\s+'
+            r'(?:CHANNEL:\s*(?P<channel>[\w\s\.]+)\s+)?'
+            r'DETAILS:\s*(?P<details>.*?)\s+'
+            r'LOCATION:\s*(?P<latitude>[\d,\.]+[NS])\s+(?P<longitude>[\d,\.]+[EW])\s+'
             r'EVENT\s+ID:\s+(?P<event_id>\d+)'
         )
 
@@ -139,25 +140,28 @@ class SDRTrunkConsumer(WebsocketConsumer):
             data["source"] = ids_numbers[0]
             data["destination"] = ids_numbers[1]
         elif event_type == "GPS":
+
             def convert_gps(coord):
                 coord = coord.strip()
-                direction = coord[-1]
-                value = coord[:-1].replace(",", ".")
+                print(f"🔍 Pôvodná súradnica: {coord}")  # Debugging
+
+                direction = coord[-1]  # Posledný znak (N/S alebo E/W)
+                value = coord[:-1].replace(",", ".")  # Nahraď čiarku bodkou
 
                 try:
                     decimal_value = float(value)
                     if direction in ["S", "W"]:
                         decimal_value *= -1
-
+                    print(f"✅ Konvertovaná súradnica: {decimal_value}")  # Debugging
                     return decimal_value
                 except ValueError:
                     raise ValueError(f"⚠️ Chyba pri konverzii GPS súradnice: {coord}")
 
-            data["latitude"] = convert_gps(data["latitude"])
-            data["longitude"] = convert_gps(data["longitude"])
-        else:
-            data["destination"] = None
-            data["source"] = None
+            if "latitude" in data and "longitude" in data:
+                data["latitude"] = convert_gps(data["latitude"])
+                data["longitude"] = convert_gps(data["longitude"])
+            else:
+                print("⚠️ Chyba: GPS súradnice neboli nájdené v parsed_data!")
 
         return data
 
@@ -171,8 +175,7 @@ class SDRTrunkConsumer(WebsocketConsumer):
             if not parsed_data.get("event"):
                 raise ValueError("Event cannot be NULL!")
 
-
-
+            print("Parsed data:", parsed_data)
             if parsed_data.get("event") == "GPS":
                 gps_id = parsed_data.get("ids_numbers")[0] if parsed_data.get("ids_numbers") else None
 
@@ -183,17 +186,14 @@ class SDRTrunkConsumer(WebsocketConsumer):
                         dmr_instance = DMRData.objects.filter(destination=gps_id).last()
 
                     if dmr_instance:
-
                         GPSData.objects.create(
                             dmr_data=dmr_instance,
                             latitude=parsed_data.get("latitude"),
                             longitude=parsed_data.get("longitude")
                         )
+
                     else:
                         print(f"⚠️ GPS event {gps_id} nemá priradený DMR event!")
-                        print("📌 Všetky DMR eventy v databáze:")
-                        for dmr in DMRData.objects.all():
-                            print(f" - ID: {dmr.id}, Source: {dmr.source}, Destination: {dmr.destination}")
 
             else:
                 DMRData.objects.create(
@@ -213,5 +213,3 @@ class SDRTrunkConsumer(WebsocketConsumer):
 
         except Exception as e:
             print("Error saving data:", e)
-
-

@@ -42,20 +42,7 @@
             </tr>
             </thead>
             <tbody>
-            {% for data in dmr_data %}
-                <tr>
-                    <td data-order="{{ data.timestamp|date:'U' }}">{{ data.timestamp|date:"d.m.Y H:i:s" }}</td>
-                    <td>{{ data.duration_s }}</td>
-                    <td>{{ data.event }}</td>
-                    <td>{{ data.source }}</td>
-                    <td>{{ data.destination }}</td>
-                    <td>{{ data.frequency }}</td>
-                    <td>{{ data.timeslot }}</td>
-                    <td>
-                        <button class="detail-btn" data-id="{{ data.id }}">Detaily</button>
-                    </td>
-                </tr>
-            {% endfor %}
+
             </tbody>
         </table>
     </div>
@@ -77,59 +64,72 @@
             $.fn.dataTable.moment('DD.MM.YYYY HH:mm:ss');
 
             var table = $('#myTable').DataTable({
-                "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "All"]],
-                "order": [[0, "desc"]],
-                "columnDefs": [
-                    {"type": "datetime-moment", "targets": 0},
-                    {"type": "num", "targets": 1}
+                processing: true,
+                serverSide: true,
+                ajax: {
+                    url: "/api/dmr-history/",
+                    type: "GET",
+                    data: function (d) {
+                        d.filterEvent = $('#filterEvent').val();
+                        d.filterSource = $('#filterSource').val();
+                        d.filterDestination = $('#filterDestination').val();
+                        d.filterFrequency = $('#filterFrequency').val();
+                    }
+                },
+                columns: [
+                    {"data": "timestamp"},
+                    {"data": "duration_s"},
+                    {"data": "event"},
+                    {"data": "source"},
+                    {"data": "destination"},
+                    {"data": "frequency"},
+                    {"data": "timeslot"},
+                    {
+                        "data": "event_id",
+                        "render": function (data) {
+                            return `<button class="detail-btn" data-id="${data}">Detaily</button>`;
+                        }
+                    }
                 ],
-                "language": {
-                    "url": "https://cdn.datatables.net/plug-ins/1.13.6/i18n/sk.json"
+                order: [[0, "desc"]],
+                language: {
+                    url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/sk.json"
                 }
             });
 
-            $('#filterEvent').on('keyup change', function () {
-                table.column(2).search(this.value).draw();
+            $('#filterEvent, #filterSource, #filterDestination, #filterFrequency').on('keyup change', function () {
+                table.draw();
             });
 
-            $('#filterSource').on('keyup change', function () {
-                table.column(3).search(this.value).draw();
-            });
-
-            $('#filterDestination').on('keyup change', function () {
-                table.column(4).search(this.value).draw();
-            });
-
-            $('#filterFrequency').on('keyup change', function () {
-                table.column(5).search(this.value).draw();
-            });
-
-            $('.detail-btn').on('click', function () {
+            $('#myTable tbody').on('click', '.detail-btn', function () {
                 let eventId = $(this).data('id');
 
                 fetch(`/api/dmr-detail/${eventId}/`)
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Chyba: ${response.status}`);
+                        }
+                        return response.json();
+                    })
                     .then(data => {
                         Swal.fire({
                             title: 'Detaily udalosti',
                             html: `
-                                <b>Časový záznam:</b> ${data.timestamp} <br>
-                                <b>Dĺžka:</b> ${data.duration_s} s <br>
-                                <b>Event:</b> ${data.event} <br>
-                                <b>Zdroj:</b> ${data.source} <br>
-                                <b>Cieľ:</b> ${data.destination} <br>
-                                <b>Frekvencia:</b> ${data.frequency} MHz <br>
-                                <b>Timeslot:</b> ${data.timeslot} <br>
-                                <b>Color Code:</b> ${data.color_code} <br>
-                                <b>Event ID:</b> ${data.event_id} <br>
-                                <b>Detaily:</b> ${data.details} <br>
-                            `,
+                        <b>Časový záznam:</b> ${data.timestamp} <br>
+                        <b>Dĺžka:</b> ${data.duration_s} s <br>
+                        <b>Event:</b> ${data.event} <br>
+                        <b>Zdroj:</b> ${data.source} <br>
+                        <b>Cieľ:</b> ${data.destination} <br>
+                        <b>Frekvencia:</b> ${data.frequency} MHz <br>
+                        <b>Timeslot:</b> ${data.timeslot} <br>
+                        <b>Event ID:</b> ${data.event_id} <br>
+                        <b>Detaily:</b> ${data.details} <br>
+                    `,
                             icon: 'info',
                             confirmButtonText: 'Zatvoriť'
                         });
                     })
                     .catch(error => {
-                        console.error('Chyba pri načítaní detailov:', error);
                         Swal.fire('Chyba!', 'Nepodarilo sa načítať detaily.', 'error');
                     });
             });

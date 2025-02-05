@@ -1,18 +1,18 @@
+import os
+import subprocess
+import xml.etree.ElementTree as ET
 from collections import Counter, defaultdict
 
-from blinker import signal
-from django.db.models import Count, Avg
+from django.db.models import Count, Avg, Q
 from django.db.models.functions import ExtractHour, ExtractWeekDay
 from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
-import subprocess
+from django_datatables_view.base_datatable_view import BaseDatatableView
 from plotly.io._orca import psutil
 from rest_framework.response import Response
 from rest_framework.utils import json
 from rest_framework.views import APIView
-import os
-import xml.etree.ElementTree as ET
 
 from .models import DMRData, GPSData
 
@@ -27,6 +27,68 @@ def prehlad(request):
 def historia_prevozu(request):
     dmr_data = DMRData.objects.all()
     return render(request, 'historia_prevozu.html', {'dmr_data': dmr_data})
+
+
+class ApiDmrHistory(BaseDatatableView):
+    model = DMRData
+    columns = ['timestamp', 'duration_s', 'event', 'source', 'destination', 'frequency', 'timeslot', 'event_id']
+    order_columns = ['timestamp', 'duration_s', 'event', 'source', 'destination', 'frequency', 'timeslot', 'event_id']
+
+    def render_column(self, row, column):
+        if column == 'timestamp':
+            return row.timestamp.strftime('%d.%m.%Y %H:%M:%S') if row.timestamp else ''
+        return super().render_column(row, column)
+
+    def get_initial_queryset(self):
+        return DMRData.objects.all()
+
+    def filter_queryset(self, qs):
+        search_value = self.request.GET.get('search[value]', None)
+        if search_value:
+            qs = qs.filter(
+                Q(timestamp__icontains=search_value) |
+                Q(duration_s__icontains=search_value) |
+                Q(event__icontains=search_value) |
+                Q(source__icontains=search_value) |
+                Q(destination__icontains=search_value) |
+                Q(frequency__icontains=search_value) |
+                Q(timeslot__icontains=search_value) |
+                Q(event_id__icontains=search_value)
+            )
+
+        filter_event = self.request.GET.get('filterEvent', None)
+        if filter_event:
+            qs = qs.filter(event__icontains=filter_event)
+
+        filter_source = self.request.GET.get('filterSource', None)
+        if filter_source:
+            qs = qs.filter(source__icontains=filter_source)
+
+        filter_destination = self.request.GET.get('filterDestination', None)
+        if filter_destination:
+            qs = qs.filter(destination__icontains=filter_destination)
+
+        filter_frequency = self.request.GET.get('filterFrequency', None)
+        if filter_frequency:
+            qs = qs.filter(frequency__icontains=filter_frequency)
+
+        return qs
+
+
+def dmr_detail(request, event_id):
+    dmr_data = get_object_or_404(DMRData, event_id=event_id)
+    data = {
+        "timestamp": dmr_data.timestamp.strftime("%d.%m.%Y %H:%M:%S"),
+        "duration_s": dmr_data.duration_s,
+        "event": dmr_data.event,
+        "source": dmr_data.source,
+        "destination": dmr_data.destination,
+        "frequency": dmr_data.frequency,
+        "timeslot": dmr_data.timeslot,
+        "event_id": dmr_data.id,
+        "details": dmr_data.details
+    }
+    return JsonResponse(data)
 
 
 def statistiky(request):
@@ -98,7 +160,6 @@ def update_monitored_frequency(request):
 
                 restart_sdrtrunk()
 
-
                 return JsonResponse({"message": "Frekvencia bola aktualizovaná"})
             else:
                 return JsonResponse({"error": "Nepodarilo sa nájsť uzol frekvencie"}, status=400)
@@ -121,6 +182,7 @@ def restart_sdrtrunk():
 
     except Exception as e:
         print(f"❌ Chyba pri reštarte SDRTrunk: {str(e)}")
+
 
 def get_gps_data(request):
     """
@@ -287,22 +349,3 @@ class HeatmapChartData(APIView):
         }
 
         return Response(response_data)
-
-
-def dmr_detail_api(request, event_id):
-    data = get_object_or_404(DMRData, id=event_id)
-
-    response_data = {
-        "timestamp": data.timestamp.strftime("%d.%m.%Y %H:%M:%S") if data.timestamp else "",
-        "duration_s": data.duration_s if data.duration_s is not None else 0,
-        "event": data.event if data.event else "",
-        "source": data.source if data.source else "",
-        "destination": data.destination if data.destination else "",
-        "frequency": data.frequency if data.frequency is not None else 0,
-        "timeslot": data.timeslot if data.timeslot is not None else 0,
-        "color_code": data.color_code if data.color_code is not None else 0,
-        "event_id": data.event_id if data.event_id else "",
-        "details": data.details if data.details else ""
-    }
-
-    return JsonResponse(response_data)

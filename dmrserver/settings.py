@@ -39,6 +39,8 @@ INSTALLED_APPS = [
     'channels',
     'sdrtrunk.apps.SdrtrunkConfig',
     'rest_framework',
+    'django_datatables_view',
+
 ]
 
 ASGI_APPLICATION = 'dmrserver.routing.application'

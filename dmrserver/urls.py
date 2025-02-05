@@ -17,8 +17,8 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from sdrtrunk.views import statistiky, prehlad, historia_prevozu, mapa, PieChartData, BarChartData, FrequencyChartData, \
-    SourceDestinationChordData, HeatmapChartData, PrehladData, dmr_detail_api, get_monitored_frequency, \
-    update_monitored_frequency, get_gps_data
+    SourceDestinationChordData, HeatmapChartData, PrehladData, get_monitored_frequency, \
+    update_monitored_frequency, get_gps_data, ApiDmrHistory, dmr_detail
 
 urlpatterns = [
     path('',  prehlad, name='prehlad'),
@@ -34,6 +34,9 @@ urlpatterns = [
     path('api/get-monitored-frequency/', get_monitored_frequency, name='get-monitored-frequency'),
     path('api/update-monitored-frequency/', update_monitored_frequency, name='update-monitored-frequency'),
 
+    path('api/dmr-history/', ApiDmrHistory.as_view(), name='dmr-history-api'),
+    path('api/dmr-detail/<int:event_id>/', dmr_detail, name='dmr_detail'),
+
     path('api/gps/', get_gps_data, name='get_gps_data'),
 
     path('api/pie-chart/', PieChartData.as_view(), name='pie-chart-api'),
@@ -42,7 +45,6 @@ urlpatterns = [
     path('api/chord-chart/', SourceDestinationChordData.as_view(), name='chord-chart-api'),
     path('api/heatmap-chart/', HeatmapChartData.as_view(), name='heatmap-chart-api'),
     path('api/prehlad-data/', PrehladData.as_view(), name='prehlad-data'),
-    path('api/dmr-detail/<int:event_id>/', dmr_detail_api, name='dmr_detail_api'),
 
 ]
 

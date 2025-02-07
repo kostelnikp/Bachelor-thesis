@@ -25,20 +25,20 @@
 
         #map {
             width: 100%;
-            height: 550px;
+            height: 650px;
             border-radius: 8px;
         }
     </style>
 
     <script>
-        var map = L.map('map').setView([49.8356, 18.2925], 10);
+        var map = L.map('map').setView([49.8356, 18.2925], 5);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
         function loadGpsData() {
-            fetch("{% url 'get_gps_data' %}")  // 🟢 Používame Django URL
+            fetch("{% url 'get_gps_data' %}")
                 .then(response => response.json())
                 .then(data => {
                     data.gps_data.forEach(point => {

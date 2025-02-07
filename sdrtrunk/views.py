@@ -214,6 +214,7 @@ class PieChartData(APIView):
         event_data = data.values_list('event', flat=True)
         event_count = Counter(event_data)
 
+
         event_count_data = [{'name': event, 'y': count} for event, count in event_count.items()]
         return Response(event_count_data)
 
@@ -330,7 +331,6 @@ class HeatmapChartData(APIView):
     """API endpoint pre heatmapu zobrazujúcu rozloženie udalostí podľa dňa a hodiny."""
 
     def get(self, request):
-        # Extrakcia dňa v týždni (1 = nedeľa, 7 = sobota) a hodiny z timestamp
         data = (
             DMRData.objects
             .annotate(day_of_week=ExtractWeekDay("timestamp"), hour=ExtractHour("timestamp"))
@@ -339,8 +339,9 @@ class HeatmapChartData(APIView):
             .order_by("day_of_week", "hour")
         )
 
+        # Transformácia: (ExtractWeekDay - 2) modulo 7
         heatmap_data = [
-            [entry["day_of_week"] - 1, entry["hour"], entry["count"]]
+            [((entry["day_of_week"] - 2) % 7), entry["hour"], entry["count"]]
             for entry in data
         ]
 

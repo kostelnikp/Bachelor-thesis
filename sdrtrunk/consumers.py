@@ -183,7 +183,6 @@ class SDRTrunkConsumer(WebsocketConsumer):
 
             def convert_gps(coord):
                 coord = coord.strip()
-                print(f"🔍 Pôvodná súradnica: {coord}")  # Debugging
 
                 direction = coord[-1]  # Posledný znak (N/S alebo E/W)
                 value = coord[:-1].replace(",", ".")  # Nahraď čiarku bodkou
@@ -192,7 +191,6 @@ class SDRTrunkConsumer(WebsocketConsumer):
                     decimal_value = float(value)
                     if direction in ["S", "W"]:
                         decimal_value *= -1
-                    print(f"✅ Konvertovaná súradnica: {decimal_value}")  # Debugging
                     return decimal_value
                 except ValueError:
                     raise ValueError(f"⚠️ Chyba pri konverzii GPS súradnice: {coord}")
@@ -210,7 +208,6 @@ class SDRTrunkConsumer(WebsocketConsumer):
                 else:
                     data["source"] = last_id
 
-                print(data["source"])
         return data
 
     def receive(self, text_data):

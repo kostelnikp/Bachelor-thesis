@@ -39,17 +39,7 @@
             </div>
         </div>
 
-        <div class="stat-container">
-            <div class="stat-card">
-                <h3>Monitorovaná frekvencia</h3>
-                <p id="monitored-frequency">Načítavam...</p>
 
-                <label for="new-frequency" id="new-frequency-label">Zadajte novú frekvenciu:</label>
-                <input type="text" id="new-frequency" placeholder="Načítavam...">
-
-                <button id="update-frequency-btn" onclick="updateMonitoredFrequency()">Uložiť</button>
-            </div>
-        </div>
     </div>
 
     <style>
@@ -81,46 +71,10 @@
             color: #007bff;
         }
 
-        .stat-card input {
-            width: 90%;
-            padding: 8px;
-            margin: 10px 0;
-            font-size: 14px;
-            text-align: center;
-            border: 2px solid #ccc;
-            border-radius: 8px;
-            transition: border-color 0.3s;
-        }
 
-        .stat-card input:focus {
-            border-color: #007bff;
-            outline: none;
-        }
-
-        .stat-card button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 10px;
-            width: 100%;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background 0.3s;
-            font-size: 16px;
-        }
-
-        .stat-card button:hover {
-            background-color: #0056b3;
-        }
-
-        #new-frequency-label {
-            font-size: 18px;
-            font-weight: bold;
-        }
     </style>
 
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 
     <script>
         function loadDashboardData() {
@@ -144,42 +98,7 @@
                 .catch(error => console.error("Chyba pri načítaní údajov:", error));
         }
 
-        function loadMonitoredFrequency() {
-            fetch('/api/get-monitored-frequency/')
-                .then(response => response.json())
-                .then(data => {
-                    let frequencyText = data.monitored_frequency || "Neznáma frekvencia";
-                    document.getElementById('monitored-frequency').innerText = frequencyText;
-                    document.getElementById('new-frequency').placeholder = data.monitored_frequency;
-                })
-                .catch(error => console.error("Chyba pri načítaní frekvencie:", error));
-        }
 
-        function updateMonitoredFrequency() {
-            let newFrequency = document.getElementById('new-frequency').value.trim();
-
-            if (!newFrequency || isNaN(newFrequency)) {
-                Swal.fire('Chyba!', 'Zadajte platnú číselnú hodnotu!');
-                return;
-            }
-
-            fetch('/api/update-monitored-frequency/', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({"frequency": newFrequency})
-            })
-                .then(response => response.json())
-                .then(data => {
-                    Swal.fire({
-                        title: data.message || "Frekvencia bola aktualizovaná!",
-                        icon: 'success',
-                        confirmButtonText: 'OK'
-                    });
-                    document.getElementById('new-frequency').value = "";
-                    loadMonitoredFrequency();
-                })
-                .catch(error => console.error("Chyba pri aktualizácii frekvencie:", error));
-        }
 
         function formatDate(dateString) {
             const date = new Date(dateString);

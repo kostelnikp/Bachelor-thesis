@@ -18,7 +18,8 @@ from django.contrib import admin
 from django.urls import path
 from sdrtrunk.views import statistiky, prehlad, historia_prevozu, mapa, PieChartData, BarChartData, FrequencyChartData, \
     SourceDestinationChordData, HeatmapChartData, PrehladData, get_monitored_frequency, \
-    update_monitored_frequency, get_gps_data, ApiDmrHistory, dmr_detail
+    update_monitored_frequency, get_gps_data, ApiDmrHistory, dmr_detail, nastavenia, get_xml_path, get_bat_path, \
+    update_xml_path, update_bat_path
 
 urlpatterns = [
     path('',  prehlad, name='prehlad'),
@@ -29,6 +30,7 @@ urlpatterns = [
     path('prehlad/', prehlad, name='prehlad'),
     path('historia_prevozu/', historia_prevozu, name='historia_prevozu'),
     path('mapa/', mapa, name='mapa'),
+    path('nastavenia/', nastavenia, name='nastavenia'),
 
     # API endpointy
     path('api/get-monitored-frequency/', get_monitored_frequency, name='get-monitored-frequency'),
@@ -38,6 +40,12 @@ urlpatterns = [
     path('api/dmr-detail/<int:event_id>/', dmr_detail, name='dmr_detail'),
 
     path('api/gps/', get_gps_data, name='get_gps_data'),
+
+    path('api/get-xml-path/', get_xml_path, name='get_xml_path'),
+    path('api/update-xml-path/', update_xml_path, name='update_xml_path'),
+
+    path('api/get-bat-path/', get_bat_path, name='get_bat_path'),
+    path('api/update-bat-path/', update_bat_path, name='update_bat_path'),
 
     path('api/pie-chart/', PieChartData.as_view(), name='pie-chart-api'),
     path('api/bar-chart/', BarChartData.as_view(), name='bar-chart-api'),

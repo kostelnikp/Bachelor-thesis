@@ -16,9 +16,19 @@ from rest_framework.views import APIView
 
 from .models import DMRData, GPSData
 
-XML_FILE_PATH = r"C:\Users\koste\SDRTrunk\playlist\test.xml"
-SDRTRUNK_PATH = r"D:\sdr-trunk-0.6.1\bin\sdr-trunk.bat"
+CONFIG_FILE = "config.json"
 
+def load_config():
+    with open(CONFIG_FILE, "r") as file:
+        return json.load(file)
+
+def save_config(config):
+    with open(CONFIG_FILE, "w") as file:
+        json.dump(config, file, indent=4)
+
+config = load_config()
+XML_FILE_PATH = config.get('XML_FILE_PATH')
+SDRTRUNK_PATH = config.get('SDRTRUNK_PATH')
 
 def prehlad(request):
     return render(request, 'prehlad.html')
@@ -97,6 +107,58 @@ def statistiky(request):
 
 def mapa(request):
     return render(request, 'mapa.html')
+
+def nastavenia(request):
+    return render(request, 'nastavenia.html')
+
+
+def get_xml_path(request):
+    return JsonResponse({"xml_path": XML_FILE_PATH})
+
+@csrf_exempt
+def update_xml_path(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            new_xml_path = data.get("xml_path")
+
+            if new_xml_path:
+                global XML_FILE_PATH
+                XML_FILE_PATH = new_xml_path
+                config['XML_FILE_PATH'] = new_xml_path
+                save_config(config)
+                return JsonResponse({"message": "XML path updated successfully"})
+            else:
+                return JsonResponse({"error": "Invalid XML path"}, status=400)
+
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+    return JsonResponse({"error": "Unsupported method"}, status=405)
+
+def get_bat_path(request):
+    return JsonResponse({"bat_path": SDRTRUNK_PATH})
+
+@csrf_exempt
+def update_bat_path(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            new_bat_path = data.get("bat_path")
+
+            if new_bat_path:
+                global SDRTRUNK_PATH
+                SDRTRUNK_PATH = new_bat_path
+                config['SDRTRUNK_PATH'] = new_bat_path
+                save_config(config)
+                return JsonResponse({"message": "Bat path updated successfully"})
+            else:
+                return JsonResponse({"error": "Invalid Bat path"}, status=400)
+
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+    return JsonResponse({"error": "Unsupported method"}, status=405)
 
 
 class PrehladData(APIView):

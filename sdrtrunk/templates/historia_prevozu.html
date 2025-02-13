@@ -116,7 +116,7 @@
                             title: 'Detaily udalosti',
                             html: `
                         <b>Časový záznam:</b> ${data.timestamp} <br>
-                        <b>Dĺžka:</b> ${data.duration_s} s <br>
+                        ${data.duration_s > 0 ? `<b>Dĺžka:</b> ${data.duration_s} s <br>` : ''}
                         <b>Event:</b> ${data.event} <br>
                         <b>Zdroj:</b> ${data.source} <br>
                         <b>Cieľ:</b> ${data.destination} <br>
@@ -192,6 +192,7 @@
         table.dataTable thead th {
             background-color: #f2f2f2;
             font-weight: bold;
+            text-align: center;
         }
 
         table.dataTable {

@@ -1,4 +1,5 @@
 import os
+import platform
 import subprocess
 import xml.etree.ElementTree as ET
 from collections import Counter, defaultdict
@@ -18,17 +19,21 @@ from .models import DMRData, GPSData
 
 CONFIG_FILE = "config.json"
 
+
 def load_config():
     with open(CONFIG_FILE, "r") as file:
         return json.load(file)
+
 
 def save_config(config):
     with open(CONFIG_FILE, "w") as file:
         json.dump(config, file, indent=4)
 
+
 config = load_config()
 XML_FILE_PATH = config.get('XML_FILE_PATH')
 SDRTRUNK_PATH = config.get('SDRTRUNK_PATH')
+
 
 def prehlad(request):
     return render(request, 'prehlad.html')
@@ -100,6 +105,15 @@ def dmr_detail(request, event_id):
     }
     return JsonResponse(data)
 
+@csrf_exempt
+def delete_dmr_data(request, event_id):
+    try:
+        dmr_data = get_object_or_404(DMRData, event_id=event_id)
+        dmr_data.delete()
+        return JsonResponse({"message": "Udalosť bola úspešne vymazaná."})
+    except Exception as e:
+        return JsonResponse({"error": "Udalosť sa nepodarilo vymazať."}, status=500)
+
 
 def statistiky(request):
     return render(request, 'statistiky.html')
@@ -108,12 +122,16 @@ def statistiky(request):
 def mapa(request):
     return render(request, 'mapa.html')
 
+
 def nastavenia(request):
     return render(request, 'nastavenia.html')
 
 
 def get_xml_path(request):
-    return JsonResponse({"xml_path": XML_FILE_PATH})
+    if XML_FILE_PATH:
+        return JsonResponse({"xml_path": XML_FILE_PATH})
+    return JsonResponse({"error": "XML cesta nebola nájdená"}, status=404)
+
 
 @csrf_exempt
 def update_xml_path(request):
@@ -122,22 +140,26 @@ def update_xml_path(request):
             data = json.loads(request.body)
             new_xml_path = data.get("xml_path")
 
-            if new_xml_path:
+            if new_xml_path and new_xml_path.endswith(".xml") and os.path.isfile(new_xml_path):
                 global XML_FILE_PATH
                 XML_FILE_PATH = new_xml_path
                 config['XML_FILE_PATH'] = new_xml_path
                 save_config(config)
-                return JsonResponse({"message": "XML path updated successfully"})
+                return JsonResponse({"message": "XML cesta bola úspešne aktualizovaná"})
             else:
-                return JsonResponse({"error": "Invalid XML path"}, status=400)
+                return JsonResponse({"error": "XML cesta je neplatná"}, status=400)
 
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
 
-    return JsonResponse({"error": "Unsupported method"}, status=405)
+    return JsonResponse({"error": "Nepodporovaná metóda"}, status=405)
+
 
 def get_bat_path(request):
-    return JsonResponse({"bat_path": SDRTRUNK_PATH})
+    if SDRTRUNK_PATH:
+        return JsonResponse({"bat_path": SDRTRUNK_PATH})
+    return JsonResponse({"error": "Bat cesta nebola nájdená"}, status=404)
+
 
 @csrf_exempt
 def update_bat_path(request):
@@ -146,19 +168,19 @@ def update_bat_path(request):
             data = json.loads(request.body)
             new_bat_path = data.get("bat_path")
 
-            if new_bat_path:
+            if new_bat_path and new_bat_path.lower().endswith(".bat") and os.path.isfile(new_bat_path):
                 global SDRTRUNK_PATH
                 SDRTRUNK_PATH = new_bat_path
                 config['SDRTRUNK_PATH'] = new_bat_path
                 save_config(config)
-                return JsonResponse({"message": "Bat path updated successfully"})
+                return JsonResponse({"message": "Bat cesta bola úspešne aktualizovaná"})
             else:
-                return JsonResponse({"error": "Invalid Bat path"}, status=400)
+                return JsonResponse({"error": "Bat cesta je neplatná"}, status=400)
 
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
 
-    return JsonResponse({"error": "Unsupported method"}, status=405)
+    return JsonResponse({"error": "Nepodporovaná metóda"}, status=405)
 
 
 class PrehladData(APIView):
@@ -220,8 +242,6 @@ def update_monitored_frequency(request):
                 frequency_node.set("frequency", str(int(new_frequency)))
                 tree.write(XML_FILE_PATH, encoding="utf-8", xml_declaration=True)
 
-                restart_sdrtrunk()
-
                 return JsonResponse({"message": "Frekvencia bola aktualizovaná"})
             else:
                 return JsonResponse({"error": "Nepodarilo sa nájsť uzol frekvencie"}, status=400)
@@ -232,18 +252,33 @@ def update_monitored_frequency(request):
     return JsonResponse({"error": "Nepodporovaná metóda"}, status=405)
 
 
-def restart_sdrtrunk():
-    try:
-        for process in psutil.process_iter(attrs=['pid', 'name']):
-            if "java" in process.info['name'].lower():
-                print(f"Ukončujem proces SDRTrunk: {process.info['name']} (PID: {process.info['pid']})")
-                os.system(f"taskkill /PID {process.info['pid']} /F")
+terminal_process = None
 
-        subprocess.Popen(["cmd.exe", "/k", "start", SDRTRUNK_PATH], shell=True)
-        print("✅ SDRTrunk bol úspešne reštartovaný v novom termináli.")
 
-    except Exception as e:
-        print(f"❌ Chyba pri reštarte SDRTrunk: {str(e)}")
+@csrf_exempt
+def start_restart_sdrtrunk(request):
+    global terminal_process
+
+    if request.method == "GET":
+        try:
+            for process in psutil.process_iter(attrs=['pid', 'name']):
+                if "java" in process.info['name'].lower():
+                    process.terminate()
+
+            if terminal_process and terminal_process.poll() is None:
+                terminal_process.terminate()
+
+            if platform.system() == "Windows":
+                terminal_process = subprocess.Popen(["cmd.exe", "/c", f"start cmd /c {SDRTRUNK_PATH}"], shell=True)
+            else:
+                terminal_process = subprocess.Popen(["gnome-terminal", "--", "bash", "-c", f"{SDRTRUNK_PATH}"])
+
+            return JsonResponse({"message": "SDRTrunk bol úspešne reštartovaný v novom termináli."})
+
+        except Exception:
+            return JsonResponse({"error": "Nepodarilo sa reštartovať SDRTrunk."}, status=500)
+
+    return JsonResponse({"error": "Nepodporovaná metóda"}, status=405)
 
 
 def get_gps_data(request):
@@ -275,7 +310,6 @@ class PieChartData(APIView):
         data = DMRData.objects.all()
         event_data = data.values_list('event', flat=True)
         event_count = Counter(event_data)
-
 
         event_count_data = [{'name': event, 'y': count} for event, count in event_count.items()]
         return Response(event_count_data)

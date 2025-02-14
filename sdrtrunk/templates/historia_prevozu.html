@@ -38,7 +38,7 @@
                 <th>Cieľ</th>
                 <th>Frekvencia</th>
                 <th>Timeslot</th>
-                <th>Ďalšie detaily</th>
+                <th>Ďalšie možnosti</th>
             </tr>
             </thead>
             <tbody>
@@ -87,7 +87,8 @@
                     {
                         "data": "event_id",
                         "render": function (data) {
-                            return `<button class="detail-btn" data-id="${data}">Detaily</button>`;
+                            return `<button class="detail-btn" data-id="${data}">Detaily</button>
+                                    <button class="delete-btn" data-id="${data}">Zmazať</button>`;
                         }
                     }
                 ],
@@ -132,6 +133,38 @@
                     .catch(error => {
                         Swal.fire('Chyba!', 'Nepodarilo sa načítať detaily.', 'error');
                     });
+            });
+            $('#myTable tbody').on('click', '.delete-btn', function () {
+                let eventId = $(this).data('id');
+
+                fetch(`/api/dmr-delete/${eventId}/`, {
+                    method: 'DELETE'
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Chyba: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        Swal.fire({
+                            title: 'Úspešne zmazané',
+                            text: 'Udalosť bola úspešne zmazaná.',
+                            icon: 'success',
+                            confirmButtonText: 'Zatvoriť'
+                        });
+                        table.draw();
+                    })
+                    .catch(error => {
+                        Swal.fire({
+                            title: 'Chyba!',
+                            text: 'Nepodarilo sa zmazať udalosť.',
+                            icon: 'error',
+                            confirmButtonText: 'Zatvoriť'
+                        });
+
+                    });
+
             });
         });
     </script>
@@ -215,6 +248,17 @@
         .detail-btn {
             padding: 5px 10px;
             background: #7a7979;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+
+        .delete-btn {
+            padding: 5px 10px;
+            background: #dc3545;
             color: #fff;
             border: none;
             border-radius: 5px;

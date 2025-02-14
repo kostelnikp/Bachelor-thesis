@@ -19,7 +19,7 @@ from django.urls import path
 from sdrtrunk.views import statistiky, prehlad, historia_prevozu, mapa, PieChartData, BarChartData, FrequencyChartData, \
     SourceDestinationChordData, HeatmapChartData, PrehladData, get_monitored_frequency, \
     update_monitored_frequency, get_gps_data, ApiDmrHistory, dmr_detail, nastavenia, get_xml_path, get_bat_path, \
-    update_xml_path, update_bat_path
+    update_xml_path, update_bat_path, start_restart_sdrtrunk, delete_dmr_data
 
 urlpatterns = [
     path('',  prehlad, name='prehlad'),
@@ -38,6 +38,7 @@ urlpatterns = [
 
     path('api/dmr-history/', ApiDmrHistory.as_view(), name='dmr-history-api'),
     path('api/dmr-detail/<int:event_id>/', dmr_detail, name='dmr_detail'),
+    path('api/dmr-delete/<int:event_id>/', delete_dmr_data, name='delete_dmr_data'),
 
     path('api/gps/', get_gps_data, name='get_gps_data'),
 
@@ -46,6 +47,8 @@ urlpatterns = [
 
     path('api/get-bat-path/', get_bat_path, name='get_bat_path'),
     path('api/update-bat-path/', update_bat_path, name='update_bat_path'),
+
+    path('api/start-reset-sdrtrunk/', start_restart_sdrtrunk, name='start-reset-sdrtrunk'),
 
     path('api/pie-chart/', PieChartData.as_view(), name='pie-chart-api'),
     path('api/bar-chart/', BarChartData.as_view(), name='bar-chart-api'),

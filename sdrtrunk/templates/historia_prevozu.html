@@ -9,7 +9,7 @@
         <div id="filters">
             <div class="filter-group">
                 <label for="filterEvent"><i class="fas fa-list"></i> Event:</label>
-                <input type="text" id="filterEvent" placeholder="Filtrovať podľa eventu">
+                <input type="text" id="filterEvent" list="events" name="event" placeholder="Filtrovať podľa eventu">
             </div>
 
             <div class="filter-group">
@@ -32,12 +32,11 @@
             <thead>
             <tr>
                 <th>Časový záznam</th>
-                <th>Dĺžka</th>
+                <th>Dĺžka (s)</th>
                 <th>Event</th>
                 <th>Zdroj</th>
                 <th>Cieľ</th>
                 <th>Frekvencia</th>
-                <th>Timeslot</th>
                 <th>Ďalšie možnosti</th>
             </tr>
             </thead>
@@ -57,9 +56,45 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
     <script src="https://cdn.datatables.net/plug-ins/1.13.6/sorting/datetime-moment.js"></script>
 
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/smoothness/jquery-ui.css">
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+
+
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script>
+
+
+        function deleteDmrData(eventId, table) {
+            fetch(`/api/dmr-delete/${eventId}/`, {
+                method: 'DELETE'
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Chyba: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    Swal.fire({
+                        title: 'Úspešne zmazané',
+                        text: data.message,
+                        icon: 'success',
+                        confirmButtonText: 'Zatvoriť'
+                    });
+                    table.draw();
+                })
+                .catch(error => {
+                    Swal.fire({
+                        title: 'Chyba!',
+                        text: error,
+                        icon: 'error',
+                        confirmButtonText: 'Zatvoriť'
+                    });
+
+                });
+        }
+
         $(document).ready(function () {
             $.fn.dataTable.moment('DD.MM.YYYY HH:mm:ss');
 
@@ -83,9 +118,9 @@
                     {"data": "source"},
                     {"data": "destination"},
                     {"data": "frequency"},
-                    {"data": "timeslot"},
                     {
                         "data": "event_id",
+                        "orderable": false,
                         "render": function (data) {
                             return `<button class="detail-btn" data-id="${data}">Detaily</button>
                                     <button class="delete-btn" data-id="${data}">Zmazať</button>`;
@@ -119,13 +154,21 @@
                         <b>Časový záznam:</b> ${data.timestamp} <br>
                         ${data.duration_s > 0 ? `<b>Dĺžka:</b> ${data.duration_s} s <br>` : ''}
                         <b>Event:</b> ${data.event} <br>
-                        <b>Zdroj:</b> ${data.source} <br>
-                        <b>Cieľ:</b> ${data.destination} <br>
+                        ${data.source ? `<b>Zdroj:</b> ${data.source} <br>` : ''}
+                        ${data.destination ? `<b>Cieľ:</b> ${data.destination} <br>` : ''}
+                        ${data.channel_number ? `<b>Číslo kanálu:</b> ${data.channel_number} <br>` : ''}
                         <b>Frekvencia:</b> ${data.frequency} MHz <br>
-                        <b>Timeslot:</b> ${data.timeslot} <br>
-                        <b>Event ID:</b> ${data.event_id} <br>
-                        <b>Detaily:</b> ${data.details} <br>
-                    `,
+                        ${data.timeslot ? `<b>Timeslot:</b> ${data.timeslot} <br>` : ''}
+                        ${data.color_code ? `<b>Color code:</b> ${data.color_code} <br>` : ''}
+                        ${
+                                data.details
+                                    ? (data.details !== "SERVICE OPTIONS []"
+                                            ? `<b>Detaily:</b> ${data.details}`
+                                            : ""
+                                    )
+                                    : `<b>Detaily:</b> Žiadne`
+                            }
+                        `,
                             icon: 'info',
                             confirmButtonText: 'Zatvoriť'
                         });
@@ -137,35 +180,44 @@
             $('#myTable tbody').on('click', '.delete-btn', function () {
                 let eventId = $(this).data('id');
 
-                fetch(`/api/dmr-delete/${eventId}/`, {
-                    method: 'DELETE'
-                })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error(`Chyba: ${response.status}`);
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        Swal.fire({
-                            title: 'Úspešne zmazané',
-                            text: 'Udalosť bola úspešne zmazaná.',
-                            icon: 'success',
-                            confirmButtonText: 'Zatvoriť'
-                        });
-                        table.draw();
-                    })
-                    .catch(error => {
-                        Swal.fire({
-                            title: 'Chyba!',
-                            text: 'Nepodarilo sa zmazať udalosť.',
-                            icon: 'error',
-                            confirmButtonText: 'Zatvoriť'
-                        });
+                Swal.fire({
+                    title: 'Naozaj zmazať?',
+                    text: 'Naozaj chcete zmazať túto udalosť? Táto akcia je nevratná.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Áno',
+                    cancelButtonText: 'Nie'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        deleteDmrData(eventId, table);
+                    }
+                });
+            });
 
+            fetch('/api/available-events/')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Chyba: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const eventList = data.events.map(eventObj => eventObj.event);
+                    $('#filterEvent').autocomplete({
+                        source: eventList,
+                        minLength: 0
+                    });
+                })
+                .catch(error => {
+                    Swal.fire({
+                        title: 'Chyba!',
+                        text: error,
+                        icon: 'error',
+                        confirmButtonText: 'Zatvoriť'
                     });
 
-            });
+                });
+
         });
     </script>
 
@@ -247,7 +299,7 @@
 
         .detail-btn {
             padding: 5px 10px;
-            background: #7a7979;
+            background: #007bff;
             color: #fff;
             border: none;
             border-radius: 5px;

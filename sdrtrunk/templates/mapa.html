@@ -5,6 +5,39 @@
     <div id="main">
         <h1>Mapa udalostí</h1>
 
+        <div id="filters">
+            <div class="filter-group">
+                <label for="filterSource"><i class="fas fa-sign-in-alt"></i> Zdroj:</label>
+                <input type="text" id="filterSource" placeholder="Filtrovať podľa zdroja">
+            </div>
+
+            <div class="filter-group">
+                <label for="filterDestination"><i class="fas fa-sign-out-alt"></i> Cieľ:</label>
+                <input type="text" id="filterDestination" placeholder="Filtrovať podľa cieľa">
+            </div>
+
+
+            <button class="add-btn" onclick="loadGpsData()">Zobraziť všetky GPS dáta</button>
+            <button class="remove-btn" onclick="resetGpsData()">Resetovať GPS dáta</button>
+
+        </div>
+
+        <table id="myGpsTable" class="display stripe hover cell-border" style="width:100%">
+            <thead>
+            <tr>
+                <th>Časový záznam</th>
+                <th>Zdroj</th>
+                <th>Cieľ</th>
+                <th>Zemepisná šírka</th>
+                <th>Zemepisná výška</th>
+                <th>Ďalšie možnosti</th>
+            </tr>
+            </thead>
+            <tbody>
+
+            </tbody>
+        </table>
+
         <div class="map-container">
             <div id="map"></div>
         </div>
@@ -13,7 +46,270 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <script src="https://cdn.datatables.net/plug-ins/1.13.6/sorting/datetime-moment.js"></script>
+
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+
+
+    <script>
+        var map = L.map('map').setView([49.8356, 18.2925], 5);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        let markers = {};
+        var highlightedRow = new Set();
+
+        function loadGpsData() {
+            fetch("{% url 'get_gps_data' %}")
+                .then(response => response.json())
+                .then(data => {
+                    data.gps_data.forEach(point => {
+                        addMarkerToMap(point);
+                        highlightedRow.add(point.event_id);
+                    });
+                    $('#myGpsTable tbody tr').addClass('highlight-green');
+
+                })
+                .catch(Swal.fire({
+                    title: 'Chyba!',
+                    text: error,
+                    icon: 'error',
+                    confirmButtonText: 'Zatvoriť'
+                }));
+        }
+
+        function resetGpsData() {
+            markers = {};
+            map.eachLayer(layer => {
+                if (layer instanceof L.Marker) {
+                    map.removeLayer(layer);
+                }
+            });
+            highlightedRow.clear();
+            $('#myGpsTable tbody tr').removeClass('highlight-green');
+
+        }
+
+
+        function addMarkerToMap(point) {
+            if (markers[point.event_id]) return;
+
+            let marker = L.marker([point.latitude, point.longitude]).addTo(map);
+            marker.bindPopup(`
+            <b>Čas:</b> ${point.timestamp} <br>
+            <b>Zdroj:</b> ${point.source || "Neznámy"} <br>
+            <b>Cieľ:</b> ${point.destination || "Neznámy"} <br>
+            <b>Zemepisná šírka:</b> ${point.latitude} <br>
+            <b>Zemepisná výška:</b> ${point.longitude} <br>
+            ${
+                point.details
+                    ? (point.details !== "SERVICE OPTIONS []"
+                            ? `<b>Detaily:</b> ${point.details}`
+                            : ""
+                    )
+                    : `<b>Detaily:</b> Žiadne`
+            }
+            `);
+
+            markers[point.event_id] = marker;
+            highlightedRow.add(point.event_id);
+        }
+
+        function removeMarkerFromMap(eventId) {
+            if (markers[eventId]) {
+                map.removeLayer(markers[eventId]);
+                delete markers[eventId];
+                highlightedRow.delete(eventId);
+            }
+        }
+
+
+        function deleteGpsRecord(eventId, table) {
+            fetch(`/api/gps-delete/${eventId}/`, {method: "DELETE"})
+                .then(response => response.json())
+                .then(data => {
+                    Swal.fire({
+                        title: 'Úspešne zmazané',
+                        text: data.message,
+                        icon: 'success',
+                        confirmButtonText: 'Zatvoriť'
+                    });
+                    removeMarkerFromMap(eventId);
+                    table.draw();
+                })
+                .catch(error => {
+                    Swal.fire({
+                        title: 'Chyba!',
+                        text: error,
+                        icon: 'error',
+                        confirmButtonText: 'Zatvoriť'
+                    });
+                });
+        }
+
+        $(document).ready(function () {
+            $.fn.dataTable.moment('DD.MM.YYYY HH:mm:ss');
+
+            var table = $('#myGpsTable').DataTable({
+                processing: true,
+                serverSide: true,
+                pageLength: 5,
+                searching: false,
+                lengthChange: false,
+                ajax: {
+                    url: "/api/gps-history/",
+                    type: "GET",
+                    data: function (d) {
+                        d.filterSource = $('#filterSource').val();
+                        d.filterDestination = $('#filterDestination').val();
+                    }
+                },
+                columns: [
+                    {"data": "timestamp"},
+                    {"data": "source"},
+                    {"data": "destination"},
+                    {"data": "latitude"},
+                    {"data": "longitude"},
+                    {
+                        "data": "event_id",
+                        "orderable": false,
+
+                        "render": function (data) {
+                            return `<button class="add-btn" data-id="${data}">Zobraziť v mape</button>
+                                <button class="remove-btn" data-id="${data}">Odobrať z mapy</button>
+                                <button class="delete-btn" data-id="${data}">Odstrániť záznam</button>`;
+                        }
+                    }
+                ],
+                order: [[0, "desc"]],
+                language: {
+                    url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/sk.json"
+                }
+            });
+
+            $('#filterEvent, #filterSource, #filterDestination').on('keyup change', function () {
+                table.draw();
+            });
+
+            $('#myGpsTable tbody').on('click', '.add-btn', function () {
+                let eventId = $(this).data('id');
+                fetch(`/api/gps-data/${eventId}/`)
+                    .then(response => response.json())
+                    .then(point => {
+                        addMarkerToMap(point);
+                        $(this).closest('tr').addClass('highlight-green');
+                    })
+                    .catch(error => Swal.fire({
+                        title: 'Chyba!',
+                        text: error,
+                        icon: 'error',
+                        confirmButtonText: 'Zatvoriť'
+                    }));
+            });
+
+            $('#myGpsTable tbody').on('click', '.remove-btn', function () {
+                let eventId = $(this).data('id');
+                removeMarkerFromMap(eventId);
+                $(this).closest('tr').removeClass('highlight-green');
+
+            });
+
+            $('#myGpsTable tbody').on('click', '.delete-btn', function () {
+                let eventId = $(this).data('id');
+
+                Swal.fire({
+                    title: 'Naozaj chcete odstrániť tento záznam?',
+                    text: 'Naozaj chcete zmazať túto udalosť? Táto akcia je nevratná.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Áno',
+                    cancelButtonText: 'Nie'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        deleteGpsRecord(eventId, table);
+                    }
+                });
+            });
+
+            table.on('draw', function () {
+                $('#myGpsTable tbody tr').each(function () {
+                    let eventId = $(this).find('.add-btn').data('id');
+                    if (highlightedRow.has(eventId)) {
+                        $(this).addClass('highlight-green');
+                    }
+                });
+            });
+
+
+        });
+
+        setTimeout(() => {
+            map.invalidateSize();
+        }, 300);
+
+    </script>
+
     <style>
+
+        #filters {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: start;
+            gap: 15px;
+            padding-bottom: 20px;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 8px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .filter-group label {
+            font-weight: bold;
+            font-size: 14px;
+            color: #555;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .filter-group i {
+            font-size: 14px;
+            color: rgb(0, 0, 0);
+        }
+
+        .filter-group input {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s ease;
+            width: 180px;
+        }
+
+        .filter-group input:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+        }
+
         .map-container {
             background-color: #f8f9fa;
             border-radius: 12px;
@@ -23,44 +319,72 @@
             margin: auto;
         }
 
+        table.dataTable thead th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        table.dataTable {
+            border: 1px solid #ccc;
+        }
+
+        table.dataTable tr:hover {
+            background-color: #eaeaea;
+        }
+
+        table.dataTable td, table.dataTable th {
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        #myGpsTable_length {
+            margin-bottom: 20px;
+        }
+
+        .add-btn {
+            padding: 5px 10px;
+            background: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .remove-btn {
+            padding: 5px 10px;
+            background: #fd7e14;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+
+        .delete-btn {
+            padding: 5px 10px;
+            background: #dc3545;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
         #map {
             width: 100%;
             height: 650px;
+            margin-top: 20px;
             border-radius: 8px;
         }
-    </style>
 
-    <script>
-        var map = L.map('map').setView([49.8356, 18.2925], 5);
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
-
-        function loadGpsData() {
-            fetch("{% url 'get_gps_data' %}")
-                .then(response => response.json())
-                .then(data => {
-                    data.gps_data.forEach(point => {
-                        var marker = L.marker([point.latitude, point.longitude]).addTo(map);
-                        marker.bindPopup(`
-                        <b>Event ID:</b> ${point.event_id} <br>
-                        <b>Zdroj:</b> ${point.source || "Neznámy"} <br>
-                        <b>Cieľ:</b> ${point.destination || "Neznámy"} <br>
-                        <b>Čas:</b> ${point.timestamp} <br>
-                        <b>Detaily:</b> ${point.details || "Žiadne"}
-                    `);
-                    });
-                })
-                .catch(error => console.error("❌ Chyba pri načítaní GPS dát:", error));
+        .highlight-green {
+            background-color: #d4edda !important;
         }
 
-        document.addEventListener("DOMContentLoaded", function () {
-            loadGpsData();
+    </style>
 
-        });
-
-
-    </script>
 
 {% endblock %}

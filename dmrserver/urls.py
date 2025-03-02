@@ -16,47 +16,51 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+
 from sdrtrunk.views import statistiky, prehlad, historia_prevozu, mapa, PieChartData, BarChartData, FrequencyChartData, \
     SourceDestinationChordData, HeatmapChartData, PrehladData, get_monitored_frequency, \
     update_monitored_frequency, get_gps_data, ApiDmrHistory, dmr_detail, nastavenia, get_xml_path, get_bat_path, \
-    update_xml_path, update_bat_path, start_restart_sdrtrunk, delete_dmr_data
+    update_xml_path, update_bat_path, start_restart_sdrtrunk, delete_dmr_data, ApiGpsHistory, add_gps_data, \
+    delete_gps_data, available_events
 
 urlpatterns = [
-    path('',  prehlad, name='prehlad'),
+    path('', prehlad, name='prehlad'),
 
     path('admin/', admin.site.urls, name='admin'),
 
-    path('statistiky/', statistiky, name='statistiky'),
+    # Prehlad
     path('prehlad/', prehlad, name='prehlad'),
+    path('api/prehlad-data/', PrehladData.as_view(), name='prehlad-data'),
+
+    # Historia prevozu
     path('historia_prevozu/', historia_prevozu, name='historia_prevozu'),
-    path('mapa/', mapa, name='mapa'),
-    path('nastavenia/', nastavenia, name='nastavenia'),
-
-    # API endpointy
-    path('api/get-monitored-frequency/', get_monitored_frequency, name='get-monitored-frequency'),
-    path('api/update-monitored-frequency/', update_monitored_frequency, name='update-monitored-frequency'),
-
+    path('api/available-events/', available_events, name='available-events-api'),
     path('api/dmr-history/', ApiDmrHistory.as_view(), name='dmr-history-api'),
     path('api/dmr-detail/<int:event_id>/', dmr_detail, name='dmr_detail'),
     path('api/dmr-delete/<int:event_id>/', delete_dmr_data, name='delete_dmr_data'),
 
+    # Mapa
+    path('mapa/', mapa, name='mapa'),
+    path('api/gps-history/', ApiGpsHistory.as_view(), name='gps-history-api'),
     path('api/gps/', get_gps_data, name='get_gps_data'),
+    path('api/gps-data/<int:event_id>/', add_gps_data, name='add_gps_data'),
+    path('api/gps-delete/<int:event_id>/', delete_gps_data, name='delete_gps_data'),
 
-    path('api/get-xml-path/', get_xml_path, name='get_xml_path'),
-    path('api/update-xml-path/', update_xml_path, name='update_xml_path'),
-
-    path('api/get-bat-path/', get_bat_path, name='get_bat_path'),
-    path('api/update-bat-path/', update_bat_path, name='update_bat_path'),
-
-    path('api/start-reset-sdrtrunk/', start_restart_sdrtrunk, name='start-reset-sdrtrunk'),
-
+    # Statistiky
+    path('statistiky/', statistiky, name='statistiky'),
     path('api/pie-chart/', PieChartData.as_view(), name='pie-chart-api'),
     path('api/bar-chart/', BarChartData.as_view(), name='bar-chart-api'),
     path('api/frequency-chart/', FrequencyChartData.as_view(), name='frequency-chart-api'),
     path('api/chord-chart/', SourceDestinationChordData.as_view(), name='chord-chart-api'),
     path('api/heatmap-chart/', HeatmapChartData.as_view(), name='heatmap-chart-api'),
-    path('api/prehlad-data/', PrehladData.as_view(), name='prehlad-data'),
 
+    # Nastavenia
+    path('nastavenia/', nastavenia, name='nastavenia'),
+    path('api/get-monitored-frequency/', get_monitored_frequency, name='get-monitored-frequency'),
+    path('api/update-monitored-frequency/', update_monitored_frequency, name='update-monitored-frequency'),
+    path('api/get-xml-path/', get_xml_path, name='get_xml_path'),
+    path('api/update-xml-path/', update_xml_path, name='update_xml_path'),
+    path('api/get-bat-path/', get_bat_path, name='get_bat_path'),
+    path('api/update-bat-path/', update_bat_path, name='update_bat_path'),
+    path('api/start-reset-sdrtrunk/', start_restart_sdrtrunk, name='start-reset-sdrtrunk'),
 ]
-
-

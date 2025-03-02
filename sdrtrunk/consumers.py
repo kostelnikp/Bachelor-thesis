@@ -1,9 +1,25 @@
 # sdrtrunk/consumers.py
 
+import json
 import re
 from datetime import datetime
 
 from channels.generic.websocket import WebsocketConsumer
+
+
+def update_sample_rate(sample_rate):
+    config_file = 'config.json'
+
+    try:
+        with open(config_file, 'r') as file:
+            config = json.load(file)
+    except FileNotFoundError:
+        config = {}
+
+    config['SAMPLE_RATE'] = sample_rate
+
+    with open(config_file, 'w') as file:
+        json.dump(config, file, indent=4)
 
 
 class SDRTrunkConsumer(WebsocketConsumer):
@@ -16,10 +32,13 @@ class SDRTrunkConsumer(WebsocketConsumer):
         pass
 
     def parse_data(self, text_data):
-        event_match = re.search(r'DMR DECODE EVENT:\s+([A-Za-z\s]+)\s', text_data)
-        if not event_match:
-            raise ValueError("Event type not found in data")
-        event_type = event_match.group(1).strip()
+        if "Sample Rate" in text_data:
+            event_type = "Sample Rate"
+        else:
+            event_match = re.search(r'DMR DECODE EVENT:\s+([A-Za-z\s]+)\s', text_data)
+            if not event_match:
+                raise ValueError("Event type not found in data")
+            event_type = event_match.group(1).strip()
 
         if not event_type:
             raise ValueError("Parsed event is empty or None")
@@ -55,7 +74,7 @@ class SDRTrunkConsumer(WebsocketConsumer):
             r'TIMESTAMP:\s+(?P<timestamp>.*?)\s+'
             r'FREQUENCY:\s+(?P<frequency>[\d\.]+)\s+'
             r'DMR DECODE EVENT:\s+Data Packet\s+'
-            r'(?:DETAILS:\s*(?P<details>.*?)\s+)?'
+            r'DETAILS:CC:(?P<color_code>\d+)\s+(?P<details>.*?)\s+'
             r'IDS:(?P<ids>.*?)\s+'
             r'DURATION:(?P<duration>\d+)\s+'
             r'(?:CHANNEL:\s*(?P<channel>\w+(?:\s+[\d\.]+)?)\s+)?'
@@ -72,6 +91,34 @@ class SDRTrunkConsumer(WebsocketConsumer):
             r'EVENT\s+ID:\s+(?P<event_id>\d+)'
         )
 
+        ENCRYPTED_GROUP_CALL_REGEX = re.compile(
+            r'TIMESTAMP:\s+(?P<timestamp>.*?)\s+'
+            r'FREQUENCY:\s+(?P<frequency>[\d\.]+)\s+'
+            r'DMR DECODE EVENT:\s+Encrypted Group Call\s+'
+            r'DETAILS:(?P<details>.*?)\s+'
+            r'IDS:(?P<ids>.*?)\s+'
+            r'DURATION:(?P<duration>\d+)\s+'
+            r'(?:CHANNEL:\s*(?P<channel>\w+(?:\s+[\d\.]+)?)\s+)?'
+            r'TIMESLOT:(?P<timeslot>\d+)\s+'
+            r'EVENT\s+ID:\s+(?P<event_id>\d+)'
+        )
+
+        CALL_REGEX = re.compile(
+            r'TIMESTAMP:\s+(?P<timestamp>.*?)\s+'
+            r'FREQUENCY:\s+(?P<frequency>[\d\.]+)\s+'
+            r'DMR DECODE EVENT:\s+Call\s+'
+            r'DETAILS:(?P<details>.*?)\s+'
+            r'IDS:(?P<ids>.*?)\s+'
+            r'DURATION:(?P<duration>\d+)\s+'
+            r'CHANNEL:\s*(?P<channel>[\w\s\.]+)\s+'
+            r'TIMESLOT:(?P<timeslot>\d+)\s+'
+            r'EVENT\s+ID:\s+(?P<event_id>\d+)'
+        )
+
+        SAMPLE_RATE_REGEX = re.compile(
+            r'Sample Rate:\s*(?P<sample_rate>[\d\.]+)'
+        )
+
         if event_type == "Group Call":
             pattern = GROUP_CALL_REGEX
         elif event_type == "SMS":
@@ -80,6 +127,12 @@ class SDRTrunkConsumer(WebsocketConsumer):
             pattern = DATA_PACKET_REGEX
         elif event_type == "GPS":
             pattern = GPS_REGEX
+        elif event_type == "Encrypted Group Call":
+            pattern = ENCRYPTED_GROUP_CALL_REGEX
+        elif event_type == "Call":
+            pattern = CALL_REGEX
+        elif event_type == "Sample Rate":
+            pattern = SAMPLE_RATE_REGEX
         else:
             raise ValueError(f"Neznámy event type: {event_type}")
 
@@ -88,6 +141,17 @@ class SDRTrunkConsumer(WebsocketConsumer):
             raise ValueError(f"Nepodarilo sa parseovať data z reťazca: {text_data}")
 
         data = match.groupdict()
+
+        if "details" in data:
+            details = data["details"]
+            details = re.sub(r'\bFM:\d+\b', '', details)
+            details = re.sub(r'\bTO:\d+\b', '', details, count=1)
+            data["details"] = details.strip()
+
+        if event_type == "Sample Rate":
+            sample_rate = match.group("sample_rate")
+            update_sample_rate(sample_rate)
+            return "Sample Rate updated"
 
         if event_type == "GPS":
             fields = data.get("fields", "")
@@ -137,7 +201,7 @@ class SDRTrunkConsumer(WebsocketConsumer):
 
         # Konverzia údajov
         data["timestamp"] = datetime.strptime(data["timestamp"], "%a %b %d %H:%M:%S CET %Y")
-        data["duration"] = int(data["duration"]) / 1000 if "duration" in data else None  # Premena na sekundy
+        data["duration"] = int(data["duration"]) / 1000 if "duration" in data else None
         data["frequency"] = float(data["frequency"])
         data["event_id"] = int(data["event_id"])
         if "timeslot" in data and data["timeslot"]:
@@ -177,8 +241,14 @@ class SDRTrunkConsumer(WebsocketConsumer):
             data["destination"] = ids_numbers[1]  # Prvý číselný ID po odstránení "DMR" je cieľ
             data["source"] = ",".join(ids_numbers[2:] + data["ids_aliases"]) if len(ids_numbers) > 2 else None
         elif event_type == "Data Packet" and len(ids_numbers) >= 2:
+            data["source"] = ids_numbers[1]
+            data["destination"] = ids_numbers[0]
+        elif event_type == "Encrypted Group Call" and len(ids_numbers) >= 2:
             data["source"] = ids_numbers[0]
             data["destination"] = ids_numbers[1]
+        elif event_type == "Call" and len(ids_numbers) >= 1:
+            data["source"] = ids_numbers[1] if len(ids_numbers) > 1 else None
+            data["destination"] = ids_numbers[0] if len(ids_numbers) > 0 else None
         elif event_type == "GPS":
 
             def convert_gps(coord):
@@ -193,13 +263,13 @@ class SDRTrunkConsumer(WebsocketConsumer):
                         decimal_value *= -1
                     return decimal_value
                 except ValueError:
-                    raise ValueError(f"⚠️ Chyba pri konverzii GPS súradnice: {coord}")
+                    raise ValueError(f"Chyba pri konverzii GPS súradnice: {coord}")
 
             if "latitude" in data and "longitude" in data:
                 data["latitude"] = convert_gps(data["latitude"])
                 data["longitude"] = convert_gps(data["longitude"])
             else:
-                print("⚠️ Chyba: GPS súradnice neboli nájdené v parsed_data!")
+                print("Chyba: GPS súradnice neboli nájdené v parsed_data!")
 
             if data.get("ids_numbers"):
                 last_id = data["ids_numbers"][-1]
@@ -216,6 +286,9 @@ class SDRTrunkConsumer(WebsocketConsumer):
 
         try:
             parsed_data = self.parse_data(text_data)
+
+            if parsed_data == "Sample Rate updated":
+                return
 
             if not parsed_data.get("event"):
                 raise ValueError("Event cannot be NULL!")
@@ -236,7 +309,7 @@ class SDRTrunkConsumer(WebsocketConsumer):
                             longitude=parsed_data.get("longitude")
                         )
                     else:
-                        print(f"⚠️ GPS event {gps_id} nemá priradený DMR event!")
+                        print(f"GPS event {gps_id} nemá priradený DMR event!")
 
 
 

@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block body %}
+    <div id="main">
+        <h1>Nastavenia</h1>
+        <div class="stat-container">
+
+            <div class="stat-card">
+                <h3>Konfigurácia kanálov (XML)</h3>
+                <p id="xml-path">Načítavam...</p>
+
+                <label for="new-xml-path">Zadajte novú cestu:</label>
+                <input type="text" id="new-xml-path" placeholder="Načítavam...">
+
+                <button id="update-xml-path-btn" onclick="updateXmlPath()">Uložiť</button>
+            </div>
+            <div class="stat-card">
+                <h3>Spúšťací súbor SDRTrunk (.bat)</h3>
+                <p id="sdrtrunk-path">Načítavam...</p>
+
+                <label for="new-sdrtrunk-path">Zadajte novú cestu:</label>
+                <input type="text" id="new-sdrtrunk-path" placeholder="Načítavam...">
+
+                <button id="update-sdrtrunk-path-btn" onclick="updateSdrtrunkPath()">Uložiť</button>
+            </div>
+        </div>
+        <div class="stat-container">
+            <div class="stat-card">
+                <h3>Aktuálne monitorovaná frekvencia</h3>
+                <p id="monitored-frequency">Načítavam...</p>
+
+                <label for="new-frequency">Zadajte novú frekvenciu:</label>
+                <input type="text" id="new-frequency" placeholder="Načítavam...">
+
+                <button id="update-frequency-btn" onclick="updateMonitoredFrequency()">Uložiť</button>
+                <button id="start-reset-frequency-btn" onclick="start_resetSDRTrunk()">Spustiť/Reštartovať</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .stat-container {
+            display: flex;
+            justify-content: space-around;
+            margin: 40px 0 0 0;
+            gap: 20px;
+        }
+
+        .stat-card {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 30%;
+            transition: transform .2s;
+        }
+
+        .stat-card:hover {
+            transform: scale(1.02);
+        }
+
+        .stat-card p {
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 10px;
+            color: #007bff;
+        }
+
+        .stat-card input {
+            width: 90%;
+            padding: 8px;
+            margin: 10px 0;
+            font-size: 14px;
+            text-align: center;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            transition: border-color 0.3s;
+        }
+
+        .stat-card input:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+
+        .stat-card button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px;
+            margin-top: 10px;
+            width: 100%;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-size: 16px;
+        }
+
+        .stat-card button:hover {
+            background-color: #0056b3;
+        }
+
+        label {
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        #update-frequency-btn:disabled, #start-reset-frequency-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+    </style>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        function loadMonitoredFrequency() {
+            fetch('/api/get-monitored-frequency/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.monitored_frequency) {
+                        document.getElementById('monitored-frequency').innerText = data.monitored_frequency;
+                        document.getElementById('new-frequency').placeholder = data.monitored_frequency;
+                        document.getElementById('start-reset-frequency-btn').disabled = false;
+                         document.getElementById('update-frequency-btn').disabled = false;
+                        document.getElementById('update-frequency-btn').title = "";
+                        document.getElementById('start-reset-frequency-btn').title = "";
+
+                    } else {
+                        document.getElementById('monitored-frequency').innerHTML = "Frekvenciu sa nepodarilo nájsť v XML súbore.<br>Skúste aktualizovať XML cestu.";
+                        document.getElementById('new-frequency').placeholder = "Frekvenciu sa nepodarilo nájsť v XML súbore.";
+                        document.getElementById('start-reset-frequency-btn').disabled = true
+                        document.getElementById('update-frequency-btn').disabled = true;
+                        document.getElementById('update-frequency-btn').title = "Skúste aktualizovať XML cestu.";
+                        document.getElementById('start-reset-frequency-btn').title = "Skúste aktualizovať XML cestu.";
+                    }
+                })
+                .catch(error => console.error("Chyba pri načítaní frekvencie:", error));
+        }
+
+        function updateMonitoredFrequency() {
+            let newFrequency = document.getElementById('new-frequency').value.trim();
+
+            if (!newFrequency || isNaN(newFrequency)) {
+                Swal.fire({
+                    title: 'Chyba!',
+                    text: 'Zadajte platnú frekvenciu!',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+                return;
+            }
+
+            fetch('/api/update-monitored-frequency/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({"frequency": newFrequency})
+            })
+                .then(response => response.json())
+                .then(data => {
+                    Swal.fire({
+                        title: data.message || "Frekvencia bola aktualizovaná!",
+                        icon: 'success',
+                        confirmButtonText: 'OK'
+                    });
+                    document.getElementById('new-frequency').value = "";
+                    loadMonitoredFrequency();
+                })
+                .catch(error => console.error("Chyba pri aktualizácii frekvencie:", error));
+        }
+
+        function getXMLPath() {
+            fetch('/api/get-xml-path/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.xml_path) {
+                        document.getElementById('xml-path').innerText = data.xml_path;
+                        document.getElementById('new-xml-path').placeholder = data.xml_path;
+                        document.getElementById('update-frequency-btn').disabled = false;
+                        document.getElementById('update-frequency-btn').title = "";
+                        loadMonitoredFrequency();
+                    } else {
+                        document.getElementById('xml-path').innerText = data.error;
+                        document.getElementById('new-xml-path').placeholder = data.error;
+                        document.getElementById('update-frequency-btn').disabled = true;
+                        document.getElementById('update-frequency-btn').title = "Najprv zadajte platnú cestu XML";
+                    }
+                })
+                .catch(error => console.error("Chyba pri načítaní cesty XML:", error));
+        }
+
+        function updateXmlPath() {
+            let newXmlPath = document.getElementById('new-xml-path').value.trim();
+
+            if (!newXmlPath) {
+                Swal.fire({
+                    title: 'Chyba!',
+                    text: 'Zadajte platnú cestu!',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+                return;
+            }
+
+            fetch('/api/update-xml-path/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({"xml_path": newXmlPath})
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message) {
+                        Swal.fire({
+                            title: data.message,
+                            icon: 'success',
+                            confirmButtonText: 'OK'
+                        });
+                    } else {
+                        Swal.fire({
+                            title: data.error,
+                            icon: 'error',
+                            confirmButtonText: 'OK'
+                        });
+                    }
+                    document.getElementById('new-xml-path').value = "";
+                    getXMLPath();
+                })
+                .catch(error => console.error("Chyba pri aktualizácii cesty XML:", error));
+        }
+
+        function getBatPath() {
+            fetch('/api/get-bat-path/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.bat_path) {
+                        document.getElementById('sdrtrunk-path').innerText = data.bat_path;
+                        document.getElementById('new-sdrtrunk-path').placeholder = data.bat_path;
+                        document.getElementById('start-reset-frequency-btn').disabled = false;
+                        document.getElementById('start-reset-frequency-btn').title = "";
+                    } else {
+                        document.getElementById('sdrtrunk-path').innerText = data.error;
+                        document.getElementById('new-sdrtrunk-path').placeholder = data.error;
+                        document.getElementById('start-reset-frequency-btn').disabled = true;
+                        document.getElementById('start-reset-frequency-btn').title = "Najprv zadajte platnú cestu spúšťacieho súboru";
+                    }
+                })
+                .catch(error => console.error("Chyba pri načítaní cesty bat:", error));
+        }
+
+        function updateSdrtrunkPath() {
+            let newSdrtrunkPath = document.getElementById('new-sdrtrunk-path').value.trim();
+
+            if (!newSdrtrunkPath) {
+                Swal.fire({
+                    title: 'Chyba!',
+                    text: 'Zadajte platnú cestu!',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+                return;
+            }
+
+            fetch('/api/update-bat-path/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({"bat_path": newSdrtrunkPath})
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message) {
+                        Swal.fire({
+                            title: data.message,
+                            icon: 'success',
+                            confirmButtonText: 'OK'
+                        });
+                    } else {
+                        Swal.fire({
+                            title: data.error,
+                            icon: 'error',
+                            confirmButtonText: 'OK'
+                        });
+                    }
+                    document.getElementById('new-sdrtrunk-path').value = "";
+                    getBatPath();
+                })
+                .catch(error => console.error("Chyba pri aktualizácii cesty bat:", error));
+        }
+
+        function start_resetSDRTrunk() {
+            fetch('/api/start-reset-sdrtrunk/', {
+                method: 'GET',
+                headers: {'Content-Type': 'application/json'}
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message) {
+                        Swal.fire({
+                            title: data.message,
+                            icon: 'success',
+                            confirmButtonText: 'OK'
+                        });
+                    } else {
+                        Swal.fire({
+                            title: data.error,
+                            icon: 'error',
+                            confirmButtonText: 'OK'
+                        });
+                    }
+                })
+                .catch(error => console.error("Chyba pri spustení/reštartovaní SDRTrunk:", error));
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            loadMonitoredFrequency();
+            getXMLPath();
+            getBatPath();
+        });
+    </script>
+
+{% endblock %}

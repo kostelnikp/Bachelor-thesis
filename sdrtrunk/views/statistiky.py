@@ -12,6 +12,7 @@ from sdrtrunk.models import DMRData
 def statistiky(request):
     return render(request, 'statistiky.html')
 
+
 class PieChartData(APIView):
     """API endpoint pre dáta koláčového grafu (rozdelenie podľa typu eventu)."""
 
@@ -135,8 +136,17 @@ class HeatmapChartData(APIView):
     """API endpoint pre heatmapu zobrazujúcu rozloženie udalostí podľa dňa a hodiny."""
 
     def get(self, request):
-        data = (
-            DMRData.objects
+        start_date = request.GET.get('start_date', '')
+        end_date = request.GET.get('end_date', '')
+
+        filtered_data = DMRData.objects.all()
+        if start_date:
+            filtered_data = filtered_data.filter(timestamp__date__gte=start_date)
+        if end_date:
+            filtered_data = filtered_data.filter(timestamp__date__lte=end_date)
+
+        filtered_data = (
+            filtered_data
             .annotate(day_of_week=ExtractWeekDay("timestamp"), hour=ExtractHour("timestamp"))
             .values("day_of_week", "hour")
             .annotate(count=Count("id"))
@@ -146,7 +156,7 @@ class HeatmapChartData(APIView):
         # Transformácia: (ExtractWeekDay - 2) modulo 7
         heatmap_data = [
             [((entry["day_of_week"] - 2) % 7), entry["hour"], entry["count"]]
-            for entry in data
+            for entry in filtered_data
         ]
 
         response_data = {

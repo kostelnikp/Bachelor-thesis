@@ -8,6 +8,27 @@
         <h2>Filtre</h2>
         <div id="filters">
             <div class="filter-group">
+                <div class="date-input-container">
+                    <label for="start-date">
+                        <i class="fa fa-calendar"></i> Od:
+                    </label>
+                    <input type="text" id="start-date" class="date-picker" placeholder="Vyber dátum">
+                    <button class="delete-btn" onclick="clearDate('start-date')">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+                <div class="date-input-container">
+                    <label for="end-date">
+                        <i class="fa fa-calendar"></i> Do:
+                    </label>
+                    <input type="text" id="end-date" class="date-picker" placeholder="Vyber dátum">
+                    <button class="delete-btn" onclick="clearDate('end-date')">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="filter-group">
                 <label for="filterEvent"><i class="fas fa-list"></i> Event:</label>
                 <input type="text" id="filterEvent" list="events" name="event" placeholder="Filtrovať podľa eventu">
             </div>
@@ -59,11 +80,14 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/smoothness/jquery-ui.css">
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
 
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/sk.js"></script>
 
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script>
-
+        let table;
 
         function deleteDmrData(eventId, table) {
             fetch(`/api/dmr-delete/${eventId}/`, {
@@ -96,9 +120,20 @@
         }
 
         $(document).ready(function () {
+
+            flatpickr(".date-picker", {
+                dateFormat: "d.m.Y",
+                locale: "sk",
+                allowInput: true,
+                maxDate: "today",
+                static: true,
+                position: "start"
+            });
+
+
             $.fn.dataTable.moment('DD.MM.YYYY HH:mm:ss');
 
-            var table = $('#myTable').DataTable({
+            table = $('#myTable').DataTable({
                 processing: true,
                 serverSide: true,
                 ajax: {
@@ -109,6 +144,8 @@
                         d.filterSource = $('#filterSource').val();
                         d.filterDestination = $('#filterDestination').val();
                         d.filterFrequency = $('#filterFrequency').val();
+                        d.start_date = $('#start-date').val();
+                        d.end_date = $('#end-date').val();
                     }
                 },
                 columns: [
@@ -133,7 +170,7 @@
                 }
             });
 
-            $('#filterEvent, #filterSource, #filterDestination, #filterFrequency').on('keyup change', function () {
+            $('#filterEvent, #filterSource, #filterDestination, #filterFrequency, #start-date, #end-date').on('keyup change', function () {
                 table.draw();
             });
 
@@ -219,13 +256,19 @@
                 });
 
         });
+
+        function clearDate(id) {
+            document.getElementById(id).value = "";
+            table.draw();
+        }
+
+
     </script>
 
     <style>
         #main {
             padding: 20px;
         }
-
 
         #filters {
             display: flex;
@@ -267,6 +310,7 @@
             outline: none;
             transition: all 0.3s ease;
             width: 180px;
+            background: #fff;
         }
 
         .filter-group input:focus {
@@ -317,5 +361,42 @@
             cursor: pointer;
             transition: all 0.3s ease;
         }
+
+        .date-input-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .date-input-container label {
+            font-weight: bold;
+            font-size: 14px;
+            color: #555;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .date-input-container i {
+            font-size: 16px;
+            color: rgb(0, 0, 0);
+        }
+
+        .date-input-container i.fa.fa-times {
+            color: #fff;
+        }
+
+        .date-picker {
+            width: 5px;
+            padding: 6px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            text-align: center;
+            background: none;
+            outline: none;
+        }
+
+
     </style>
 {% endblock %}

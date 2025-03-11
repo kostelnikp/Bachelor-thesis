@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404
@@ -43,6 +45,22 @@ class ApiDmrHistory(BaseDatatableView):
                 Q(frequency__icontains=search_value) |
                 Q(event_id__icontains=search_value)
             )
+
+        filter_date_start = self.request.GET.get('start_date', None)
+        if filter_date_start:
+            try:
+                start_date = datetime.strptime(filter_date_start, '%d.%m.%Y')
+                qs = qs.filter(timestamp__date__gte=start_date.date())
+            except ValueError:
+                pass
+
+        filter_date_end = self.request.GET.get('end_date', None)
+        if filter_date_end:
+            try:
+                end_date = datetime.strptime(filter_date_end, '%d.%m.%Y')
+                qs = qs.filter(timestamp__date__lte=end_date.date())
+            except ValueError:
+                pass
 
         filter_event = self.request.GET.get('filterEvent', None)
         if filter_event:

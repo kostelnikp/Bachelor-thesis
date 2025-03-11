@@ -18,10 +18,11 @@ from django.contrib import admin
 from django.urls import path
 
 from sdrtrunk.views import statistiky, prehlad, historia_prevozu, mapa, PieChartData, BarChartData, FrequencyChartData, \
-    SourceDestinationChordData, HeatmapChartData, PrehladData, get_monitored_frequency, \
-    update_monitored_frequency, get_gps_data, ApiDmrHistory, dmr_detail, nastavenia, get_xml_path, get_bat_path, \
-    update_xml_path, update_bat_path, start_restart_sdrtrunk, delete_dmr_data, ApiGpsHistory, add_gps_data, \
-    delete_gps_data, available_events
+    SourceDestinationChordData, HeatmapChartData, PrehladData, \
+    get_gps_data, ApiDmrHistory, dmr_detail, nastavenia, get_bat_path, \
+    update_bat_path, start_restart_sdrtrunk, delete_dmr_data, ApiGpsHistory, add_gps_data, \
+    delete_gps_data, available_events, load_frequencies, add_monitored_channel, remove_monitored_channel, \
+    load_playlist_files, select_xml, get_selected_playlist, get_selected_frequencies
 
 urlpatterns = [
     path('', prehlad, name='prehlad'),
@@ -56,11 +57,15 @@ urlpatterns = [
 
     # Nastavenia
     path('nastavenia/', nastavenia, name='nastavenia'),
-    path('api/get-monitored-frequency/', get_monitored_frequency, name='get-monitored-frequency'),
-    path('api/update-monitored-frequency/', update_monitored_frequency, name='update-monitored-frequency'),
-    path('api/get-xml-path/', get_xml_path, name='get_xml_path'),
-    path('api/update-xml-path/', update_xml_path, name='update_xml_path'),
     path('api/get-bat-path/', get_bat_path, name='get_bat_path'),
     path('api/update-bat-path/', update_bat_path, name='update_bat_path'),
     path('api/start-reset-sdrtrunk/', start_restart_sdrtrunk, name='start-reset-sdrtrunk'),
+    path('api/load-frequencies/', load_frequencies, name='load_frequencies'),
+    path('api/add-frequency/', add_monitored_channel, name='add-frequency'),
+    path('api/remove-frequency/', remove_monitored_channel, name='remove-frequency'),
+    path('api/load-xml/', load_playlist_files, name='load-xml'),
+    path('api/select-xml/', select_xml, name='select-xml'),
+    path('api/get-selected-playlist/', get_selected_playlist, name='get-selected-playlist'),
+    path('api/get-selected-frequencies/', get_selected_frequencies, name='get-selected-frequencies'),
+
 ]

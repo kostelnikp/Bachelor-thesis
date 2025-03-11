@@ -8,12 +8,19 @@
 
             <div class="stat-card">
                 <h3>Konfigurácia kanálov (XML)</h3>
-                <p id="xml-path">Načítavam...</p>
 
-                <label for="new-xml-path">Zadajte novú cestu:</label>
-                <input type="text" id="new-xml-path" placeholder="Načítavam...">
+                <table id="myXMLTable" class="display stripe hover cell-border" style="width:100%">
+                    <thead>
+                    <tr>
+                        <th>Názov</th>
+                        <th>Ďalšie možnosti</th>
+                    </tr>
+                    </thead>
+                    <tbody>
 
-                <button id="update-xml-path-btn" onclick="updateXmlPath()">Uložiť</button>
+                    </tbody>
+                </table>
+
             </div>
             <div class="stat-card">
                 <h3>Spúšťací súbor SDRTrunk (.bat)</h3>
@@ -24,212 +31,202 @@
 
                 <button id="update-sdrtrunk-path-btn" onclick="updateSdrtrunkPath()">Uložiť</button>
             </div>
-        </div>
-        <div class="stat-container">
-            <div class="stat-card">
-                <h3>Aktuálne monitorovaná frekvencia</h3>
-                <p id="monitored-frequency">Načítavam...</p>
-
-                <label for="new-frequency">Zadajte novú frekvenciu:</label>
-                <input type="text" id="new-frequency" placeholder="Načítavam...">
-
-                <button id="update-frequency-btn" onclick="updateMonitoredFrequency()">Uložiť</button>
-                <button id="start-reset-frequency-btn" onclick="start_resetSDRTrunk()">Spustiť/Reštartovať</button>
+            <div class="stat-card" style="">
+                <h3>Spustiť/reštartovať SDRTrunk</h3>
+                <button id="start-reset-sdrtrunk-btn" onclick="start_resetSDRTrunk()">Spustiť/reštartovať</button>
             </div>
         </div>
+
+        <div class="table-container">
+            <table id="myTable" class="display stripe hover cell-border" style="width:100%">
+                <thead>
+                <tr>
+                    <th>Názov</th>
+                    <th>Frekvencia</th>
+                    <th>Ďalšie možnosti</th>
+                </tr>
+                </thead>
+                <tbody>
+
+                </tbody>
+            </table>
+        </div>
+
     </div>
 
-    <style>
-        .stat-container {
-            display: flex;
-            justify-content: space-around;
-            margin: 40px 0 0 0;
-            gap: 20px;
-        }
 
-        .stat-card {
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            width: 30%;
-            transition: transform .2s;
-        }
-
-        .stat-card:hover {
-            transform: scale(1.02);
-        }
-
-        .stat-card p {
-            font-size: 16px;
-            font-weight: bold;
-            margin-top: 10px;
-            color: #007bff;
-        }
-
-        .stat-card input {
-            width: 90%;
-            padding: 8px;
-            margin: 10px 0;
-            font-size: 14px;
-            text-align: center;
-            border: 2px solid #ccc;
-            border-radius: 8px;
-            transition: border-color 0.3s;
-        }
-
-        .stat-card input:focus {
-            border-color: #007bff;
-            outline: none;
-        }
-
-        .stat-card button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 10px;
-            margin-top: 10px;
-            width: 100%;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background 0.3s;
-            font-size: 16px;
-        }
-
-        .stat-card button:hover {
-            background-color: #0056b3;
-        }
-
-        label {
-            font-size: 16px;
-            font-weight: bold;
-        }
-
-        #update-frequency-btn:disabled, #start-reset-frequency-btn:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
-        }
-
-    </style>
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+
+
     <script>
-        function loadMonitoredFrequency() {
-            fetch('/api/get-monitored-frequency/')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.monitored_frequency) {
-                        document.getElementById('monitored-frequency').innerText = data.monitored_frequency;
-                        document.getElementById('new-frequency').placeholder = data.monitored_frequency;
-                        document.getElementById('start-reset-frequency-btn').disabled = false;
-                         document.getElementById('update-frequency-btn').disabled = false;
-                        document.getElementById('update-frequency-btn').title = "";
-                        document.getElementById('start-reset-frequency-btn').title = "";
+        let table;
+        let tableXML;
 
-                    } else {
-                        document.getElementById('monitored-frequency').innerHTML = "Frekvenciu sa nepodarilo nájsť v XML súbore.<br>Skúste aktualizovať XML cestu.";
-                        document.getElementById('new-frequency').placeholder = "Frekvenciu sa nepodarilo nájsť v XML súbore.";
-                        document.getElementById('start-reset-frequency-btn').disabled = true
-                        document.getElementById('update-frequency-btn').disabled = true;
-                        document.getElementById('update-frequency-btn').title = "Skúste aktualizovať XML cestu.";
-                        document.getElementById('start-reset-frequency-btn').title = "Skúste aktualizovať XML cestu.";
+        $(document).ready(function () {
+
+
+            tableXML = $('#myXMLTable').DataTable({
+                processing: true,
+                serverSide: false,
+                pageLength: 5,
+                lengthChange: false,
+                searching: false,
+                ajax: {
+                    url: "/api/load-xml/",
+                    type: "GET",
+                },
+                columns: [
+                    {"data": "file_name"},
+                    {
+                        "data": "file_path",
+                        "orderable": false,
+
+                        "render": function (data) {
+                            return `<button data-path="${data}">Vybrať XML súbor</button>`;
+                        }
                     }
-                })
-                .catch(error => console.error("Chyba pri načítaní frekvencie:", error));
-        }
+                ],
+                order: [[0, "desc"]],
+                language: {
+                    url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/sk.json"
+                },
+                drawCallback: function () {
+                    highlightSelectedRow();
+                }
+            });
 
-        function updateMonitoredFrequency() {
-            let newFrequency = document.getElementById('new-frequency').value.trim();
-
-            if (!newFrequency || isNaN(newFrequency)) {
-                Swal.fire({
-                    title: 'Chyba!',
-                    text: 'Zadajte platnú frekvenciu!',
-                    icon: 'error',
-                    confirmButtonText: 'OK'
-                });
-                return;
-            }
-
-            fetch('/api/update-monitored-frequency/', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({"frequency": newFrequency})
-            })
-                .then(response => response.json())
-                .then(data => {
-                    Swal.fire({
-                        title: data.message || "Frekvencia bola aktualizovaná!",
-                        icon: 'success',
-                        confirmButtonText: 'OK'
-                    });
-                    document.getElementById('new-frequency').value = "";
-                    loadMonitoredFrequency();
-                })
-                .catch(error => console.error("Chyba pri aktualizácii frekvencie:", error));
-        }
-
-        function getXMLPath() {
-            fetch('/api/get-xml-path/')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.xml_path) {
-                        document.getElementById('xml-path').innerText = data.xml_path;
-                        document.getElementById('new-xml-path').placeholder = data.xml_path;
-                        document.getElementById('update-frequency-btn').disabled = false;
-                        document.getElementById('update-frequency-btn').title = "";
-                        loadMonitoredFrequency();
-                    } else {
-                        document.getElementById('xml-path').innerText = data.error;
-                        document.getElementById('new-xml-path').placeholder = data.error;
-                        document.getElementById('update-frequency-btn').disabled = true;
-                        document.getElementById('update-frequency-btn').title = "Najprv zadajte platnú cestu XML";
+            table = $('#myTable').DataTable({
+                processing: true,
+                serverSide: false,
+                pageLength: 5,
+                lengthChange: false,
+                ajax: {
+                    url: "/api/load-frequencies/",
+                    type: "GET",
+                },
+                columns: [
+                    {"data": "name"},
+                    {"data": "frequency"},
+                    {
+                        "data": null,
+                        "orderable": false,
+                        "render": function (data, type, row) {
+                            return `<button class="add-btn ${!row.valid ? 'disabled-btn' : ''}" data-frequency="${row.frequency}" ${!row.valid ? 'disabled title="Frekvencia je mimo monitorovaného pásma"' : ''}>Monitorovať frekvenciu</button>
+<button class="remove-btn ${!row.valid ? 'disabled-btn' : ''}" data-frequency="${row.frequency}" ${!row.valid ? 'disabled title="Frekvencia je mimo monitorovaného pásma"' : ''}>Prestať monitorovať frekvenciu</button>`;
+                        }
                     }
+                ],
+                order: [[0, "desc"]],
+                language: {
+                    url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/sk.json"
+                },
+                drawCallback: function () {
+                    highlightSelectedFrequencies();
+                }
+            });
+
+
+            $('#myXMLTable tbody').on('click', 'button', function () {
+                let filePath = $(this).data('path');
+
+                fetch('/api/select-xml/', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({"file_path": filePath})
                 })
-                .catch(error => console.error("Chyba pri načítaní cesty XML:", error));
-        }
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.message) {
+                            Swal.fire({
+                                title: data.message,
+                                icon: 'success',
+                                confirmButtonText: 'OK'
+                            });
+                            $('#myXMLTable tbody tr').removeClass('selected-playlist');
+                            highlightSelectedRow();
+                            tableXML.ajax.reload();
+                            table.ajax.reload();
+                        } else {
+                            Swal.fire({
+                                title: data.error,
+                                icon: 'error',
+                                confirmButtonText: 'OK'
+                            });
+                        }
+                    })
+                    .catch(error => console.error("Chyba pri výbere XML súboru:", error));
+            });
 
-        function updateXmlPath() {
-            let newXmlPath = document.getElementById('new-xml-path').value.trim();
 
-            if (!newXmlPath) {
-                Swal.fire({
-                    title: 'Chyba!',
-                    text: 'Zadajte platnú cestu!',
-                    icon: 'error',
-                    confirmButtonText: 'OK'
-                });
-                return;
-            }
+            $('#myTable tbody').on('click', '.add-btn', function () {
+                let frequency = $(this).data('frequency').split(" ")[0]; //446.4300 MHz -> 446.4300
 
-            fetch('/api/update-xml-path/', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({"xml_path": newXmlPath})
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.message) {
-                        Swal.fire({
-                            title: data.message,
-                            icon: 'success',
-                            confirmButtonText: 'OK'
-                        });
-                    } else {
-                        Swal.fire({
-                            title: data.error,
-                            icon: 'error',
-                            confirmButtonText: 'OK'
-                        });
-                    }
-                    document.getElementById('new-xml-path').value = "";
-                    getXMLPath();
+                fetch('/api/add-frequency/', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({"frequency": frequency})
                 })
-                .catch(error => console.error("Chyba pri aktualizácii cesty XML:", error));
-        }
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.message) {
+                            Swal.fire({
+                                title: data.message,
+                                icon: 'success',
+                                confirmButtonText: 'OK'
+                            });
+                            table.ajax.reload();
+                        } else {
+                            Swal.fire({
+                                title: data.error,
+                                icon: 'error',
+                                confirmButtonText: 'OK'
+                            });
+                        }
+                    })
+                    .catch(error => console.error("Chyba pri pridávaní frekvencie:", error));
+
+            });
+
+            $('#myTable tbody').on('click', '.remove-btn', function () {
+                let frequency = $(this).data('frequency').split(" ")[0]; //446.4300 MHz -> 446.4300
+
+                fetch('/api/remove-frequency/', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({"frequency": frequency})
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.message) {
+                            Swal.fire({
+                                title: data.message,
+                                icon: 'success',
+                                confirmButtonText: 'OK'
+                            });
+                            table.ajax.reload();
+                        } else {
+                            Swal.fire({
+                                title: data.error,
+                                icon: 'error',
+                                confirmButtonText: 'OK'
+                            });
+                        }
+                    })
+                    .catch(error => console.error("Chyba pri pridávaní frekvencie:", error));
+            });
+
+
+        });
+
 
         function getBatPath() {
             fetch('/api/get-bat-path/')
@@ -238,13 +235,9 @@
                     if (data.bat_path) {
                         document.getElementById('sdrtrunk-path').innerText = data.bat_path;
                         document.getElementById('new-sdrtrunk-path').placeholder = data.bat_path;
-                        document.getElementById('start-reset-frequency-btn').disabled = false;
-                        document.getElementById('start-reset-frequency-btn').title = "";
                     } else {
                         document.getElementById('sdrtrunk-path').innerText = data.error;
                         document.getElementById('new-sdrtrunk-path').placeholder = data.error;
-                        document.getElementById('start-reset-frequency-btn').disabled = true;
-                        document.getElementById('start-reset-frequency-btn').title = "Najprv zadajte platnú cestu spúšťacieho súboru";
                     }
                 })
                 .catch(error => console.error("Chyba pri načítaní cesty bat:", error));
@@ -313,11 +306,182 @@
                 .catch(error => console.error("Chyba pri spustení/reštartovaní SDRTrunk:", error));
         }
 
+        function highlightSelectedRow() {
+            fetch('/api/get-selected-playlist/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.selected_playlist_path) {
+                        $('#myXMLTable tbody tr').each(function () {
+                            if ($(this).find('button').data('path') === data.selected_playlist_path) {
+                                $(this).addClass('selected-playlist');
+                            }
+                        });
+                    }
+                })
+                .catch(error => console.error("Chyba pri načítaní vybraného playlistu:", error));
+        }
+
+        function highlightSelectedFrequencies() {
+            fetch('/api/get-selected-frequencies/')
+                .then(response => response.json())
+                .then(data => {
+                    for (let frequency of data.frequencies) {
+                        console.log(frequency);
+                        $('#myTable tbody tr').each(function () {
+                            if ($(this).find('.add-btn').data('frequency').split(" ")[0] === frequency) {
+                                $(this).find('.add-btn').hide();
+                                $(this).find('.remove-btn').show();
+                                $(this).closest('tr').addClass('selected-playlist');
+                            }
+                        });
+                    }
+
+
+                })
+                .catch(error => console.error("Chyba pri načítaní vybraných frekvencií:", error));
+        }
+
+
         document.addEventListener("DOMContentLoaded", function () {
-            loadMonitoredFrequency();
-            getXMLPath();
             getBatPath();
         });
     </script>
+
+    <style>
+        .stat-container {
+            display: flex;
+            justify-content: space-around;
+            margin: 40px 0 0 0;
+            gap: 20px;
+        }
+
+        .stat-card {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 30%;
+            transition: transform .2s;
+        }
+
+        .stat-card:hover {
+            transform: scale(1.02);
+        }
+
+        .stat-card p {
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 10px;
+            color: #007bff;
+        }
+
+        .stat-card input {
+            width: 90%;
+            padding: 8px;
+            margin: 10px 0;
+            font-size: 14px;
+            text-align: center;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            transition: border-color 0.3s;
+        }
+
+        .stat-card input:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+
+        .stat-card button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px;
+            margin-top: 10px;
+            width: 100%;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-size: 16px;
+        }
+
+        .stat-card button:hover {
+            background-color: #0056b3;
+        }
+
+        label {
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .table-container {
+            margin-top: 40px;
+        }
+
+        table.dataTable thead th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        table.dataTable {
+            border: 1px solid #ccc;
+        }
+
+        table.dataTable tr:hover {
+            background-color: #eaeaea;
+        }
+
+        table.dataTable td, table.dataTable th {
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        #myTable_length {
+            margin-bottom: 20px;
+        }
+
+        .add-btn {
+            padding: 5px 10px;
+            background: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .remove-btn {
+            padding: 5px 10px;
+            background: #fd7e14;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+
+        .delete-btn {
+            padding: 5px 10px;
+            background: #dc3545;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .disabled-btn {
+            background-color: #cccccc;
+            color: #666666;
+            cursor: not-allowed;
+        }
+
+        .selected-playlist {
+            background-color: #d4edda !important;
+        }
+
+    </style>
 
 {% endblock %}

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
@@ -9,10 +11,12 @@ from sdrtrunk.models import GPSData
 def mapa(request):
     return render(request, 'mapa.html')
 
+
 class ApiGpsHistory(BaseDatatableView):
     model = GPSData
     columns = ['timestamp', 'source', 'destination', 'latitude', 'longitude', 'event_id']
-    order_columns = ['dmr_data__timestamp', 'dmr_data__source', 'dmr_data__destination', 'latitude', 'longitude', 'dmr_data__event_id']
+    order_columns = ['dmr_data__timestamp', 'dmr_data__source', 'dmr_data__destination', 'latitude', 'longitude',
+                     'dmr_data__event_id']
 
     def render_column(self, row, column):
         if column == 'timestamp':
@@ -29,6 +33,22 @@ class ApiGpsHistory(BaseDatatableView):
         return GPSData.objects.select_related('dmr_data').all()
 
     def filter_queryset(self, qs):
+        filter_date_start = self.request.GET.get('start_date', None)
+        if filter_date_start:
+            try:
+                start_date = datetime.strptime(filter_date_start, '%d.%m.%Y')
+                qs = qs.filter(dmr_data__timestamp__date__gte=start_date.date())
+            except ValueError:
+                pass
+
+        filter_date_end = self.request.GET.get('end_date', None)
+        if filter_date_end:
+            try:
+                end_date = datetime.strptime(filter_date_end, '%d.%m.%Y')
+                qs = qs.filter(dmr_data__timestamp__date__lte=end_date.date())
+            except ValueError:
+                pass
+
         filter_source = self.request.GET.get('filterSource', None)
         if filter_source:
             qs = qs.filter(dmr_data__source__icontains=filter_source)
@@ -38,6 +58,7 @@ class ApiGpsHistory(BaseDatatableView):
             qs = qs.filter(dmr_data__destination__icontains=filter_destination)
 
         return qs
+
 
 @csrf_exempt
 def add_gps_data(request, event_id):
@@ -56,6 +77,7 @@ def add_gps_data(request, event_id):
     except GPSData.DoesNotExist:
         return JsonResponse({"error": "GPS dáta sa nepodarilo načítať z databázy."}, status=500)
 
+
 @csrf_exempt
 def delete_gps_data(request, event_id):
     try:
@@ -64,6 +86,7 @@ def delete_gps_data(request, event_id):
         return JsonResponse({"message": "Udalosť bola úspešne vymazaná."})
     except Exception as e:
         return JsonResponse({"error": "Udalosť sa nepodarilo vymazať."}, status=500)
+
 
 def get_gps_data(request):
     """

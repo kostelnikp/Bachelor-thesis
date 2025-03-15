@@ -174,45 +174,65 @@
                 table.draw();
             });
 
-            $('#myTable tbody').on('click', '.detail-btn', function () {
+            $('#myTable tbody').on('click', '.detail-btn', async function () {
                 let eventId = $(this).data('id');
 
-                fetch(`/api/dmr-detail/${eventId}/`)
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error(`Chyba: ${response.status}`);
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        Swal.fire({
-                            title: 'Detaily udalosti',
-                            html: `
-                        <b>Časový záznam:</b> ${data.timestamp} <br>
-                        ${data.duration_s > 0 ? `<b>Dĺžka:</b> ${data.duration_s} s <br>` : ''}
-                        <b>Event:</b> ${data.event} <br>
-                        ${data.source ? `<b>Zdroj:</b> ${data.source} <br>` : ''}
-                        ${data.destination ? `<b>Cieľ:</b> ${data.destination} <br>` : ''}
-                        ${data.channel_number ? `<b>Číslo kanálu:</b> ${data.channel_number} <br>` : ''}
-                        <b>Frekvencia:</b> ${data.frequency} MHz <br>
-                        ${data.timeslot ? `<b>Timeslot:</b> ${data.timeslot} <br>` : ''}
-                        ${data.color_code ? `<b>Color code:</b> ${data.color_code} <br>` : ''}
-                        ${
-                                data.details
-                                    ? (data.details !== "SERVICE OPTIONS []"
-                                            ? `<b>Detaily:</b> ${data.details}`
-                                            : ""
-                                    )
-                                    : `<b>Detaily:</b> Žiadne`
-                            }
-                        `,
-                            icon: 'info',
-                            confirmButtonText: 'Zatvoriť'
+                try {
+                    let response = await fetch(`/api/dmr-detail/${eventId}/`);
+                    if (!response.ok) {
+                        throw new Error(`Chyba: ${response.status}`);
+                    }
+                    let data = await response.json();
+                    let details = data.details ? (data.details !== "SERVICE OPTIONS []" ? data.details : "") : "Žiadne";
+                    let decodedData = "";
+
+                    if (details.split(":")[0].includes("DEFINED SHORT DATA PACKET")) {
+                        let decodeResponse = await fetch('/api/decode-short-data-packet/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({details: details.split(":")[1]})
                         });
-                    })
-                    .catch(error => {
-                        Swal.fire('Chyba!', 'Nepodarilo sa načítať detaily.', 'error');
+                        if (!decodeResponse.ok) {
+                            throw new Error(`Chyba: ${decodeResponse.status}`);
+                        }
+                        let decodeData = await decodeResponse.json();
+                        decodedData = decodeData.decoded_details;
+                    }
+
+                    if (data.event.includes("SMS")) {
+                        if (!details.includes("Error")) {
+                            let byteArray = new Uint8Array(details.split('').map(char => char.charCodeAt(0)));
+                            let hexString = Array.from(byteArray).map(byte => byte.toString(16).padStart(2, '0')).join('');
+                            details = hexString.toUpperCase();
+                        } else {
+                            details = "";
+                        }
+
+                    }
+
+                    Swal.fire({
+                        title: 'Detaily udalosti',
+                        html: `
+                <b>Časový záznam:</b> ${data.timestamp} <br>
+                ${data.duration_s > 0 ? `<b>Dĺžka:</b> ${data.duration_s} s <br>` : ''}
+                <b>Event:</b> ${data.event} <br>
+                ${data.source ? `<b>Zdroj:</b> ${data.source} <br>` : ''}
+                ${data.destination ? `<b>Cieľ:</b> ${data.destination} <br>` : ''}
+                ${data.channel_number ? `<b>Číslo kanálu:</b> ${data.channel_number} <br>` : ''}
+                <b>Frekvencia:</b> ${data.frequency} MHz <br>
+                ${data.timeslot ? `<b>Timeslot:</b> ${data.timeslot} <br>` : ''}
+                ${data.color_code ? `<b>Color code:</b> ${data.color_code} <br>` : ''}
+                ${details ? `<b>Detaily:</b> ${details} <br>` : ''}
+                ${decodedData ? `<b>Dekódované detaily:</b> ${decodedData} <br>` : ''}
+            `,
+                        icon: 'info',
+                        confirmButtonText: 'Zatvoriť'
                     });
+                } catch (error) {
+                    Swal.fire('Chyba!', 'Nepodarilo sa načítať detaily.', 'error');
+                }
             });
             $('#myTable tbody').on('click', '.delete-btn', function () {
                 let eventId = $(this).data('id');
@@ -222,8 +242,10 @@
                     text: 'Naozaj chcete zmazať túto udalosť? Táto akcia je nevratná.',
                     icon: 'warning',
                     showCancelButton: true,
+                    confirmButtonColor: '#28a745',
+                    cancelButtonColor: '#d33',
                     confirmButtonText: 'Áno',
-                    cancelButtonText: 'Nie'
+                    cancelButtonText: 'Zrušiť'
                 }).then((result) => {
                     if (result.isConfirmed) {
                         deleteDmrData(eventId, table);

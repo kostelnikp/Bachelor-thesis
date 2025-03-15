@@ -39,6 +39,13 @@
             </div>
         </div>
 
+        <div class="stat-container">
+            <div class="stat-card">
+                <h3>Aktuálne monitorované frekvencie</h3>
+                <p id="currently-monitored-frequencies">Načítavam...</p>
+            </div>
+        </div>
+
 
     </div>
 
@@ -98,6 +105,15 @@
                 .catch(error => console.error("Chyba pri načítaní údajov:", error));
         }
 
+        function loadCurrentlyMonitoredFrequencies() {
+            fetch('/api/currently-monitored-frequencies/')
+                .then(response => response.json())
+                .then(data => {
+                    const frequencies = data.frequencies.map(frequency => frequency + " MHz");
+                    document.getElementById('currently-monitored-frequencies').innerHTML = frequencies.length > 0 ? frequencies.join("<br>") : "Aktuálne nie sú monitorované žiadne frekvencie";
+                })
+                .catch(error => console.error("Chyba pri načítaní údajov:", error));
+        }
 
 
         function formatDate(dateString) {
@@ -114,6 +130,7 @@
 
         document.addEventListener("DOMContentLoaded", function () {
             loadDashboardData();
+            loadCurrentlyMonitoredFrequencies();
         });
     </script>
 

@@ -1,3 +1,4 @@
+import binascii
 from datetime import datetime
 
 from django.db.models import Q
@@ -5,6 +6,7 @@ from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django_datatables_view.base_datatable_view import BaseDatatableView
+from rest_framework.utils import json
 
 from sdrtrunk.models import DMRData
 
@@ -13,12 +15,14 @@ def historia_prevozu(request):
     dmr_data = DMRData.objects.all()
     return render(request, 'historia_prevozu.html', {'dmr_data': dmr_data})
 
+
 def available_events(request):
     try:
         events = DMRData.objects.values('event').distinct()
         return JsonResponse({"events": list(events)})
     except Exception as e:
         return JsonResponse({"error": "Nepodarilo sa načítať dostupné udalosti."}, status=500)
+
 
 class ApiDmrHistory(BaseDatatableView):
     model = DMRData
@@ -80,6 +84,7 @@ class ApiDmrHistory(BaseDatatableView):
 
         return qs
 
+
 def dmr_detail(request, event_id):
     dmr_data = get_object_or_404(DMRData, event_id=event_id)
     data = {
@@ -97,6 +102,7 @@ def dmr_detail(request, event_id):
     }
     return JsonResponse(data)
 
+
 @csrf_exempt
 def delete_dmr_data(request, event_id):
     try:
@@ -105,3 +111,33 @@ def delete_dmr_data(request, event_id):
         return JsonResponse({"message": "Udalosť bola úspešne vymazaná."})
     except Exception as e:
         return JsonResponse({"error": "Udalosť sa nepodarilo vymazať."}, status=500)
+
+
+@csrf_exempt
+def decode_short_data_packet(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            details = data.get('details')
+            if details:
+                decoded_details = decode_data(details)
+                return JsonResponse({'decoded_details': decoded_details})
+            else:
+                return JsonResponse({'error': 'No details provided'}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+
+def decode_data(data):
+    out = b''
+    delta = 36  # block shift (extra checksum at each block?)
+    block = 32  # maximum text block size
+    start = 4  # initial skip
+    end = 8  # end offset (block checksum + full checksum?)
+
+    i = start
+    while i < len(data):
+        out += binascii.unhexlify(data[i:min(i + block, len(data) - end)])
+        i += delta
+    return str(out, "utf-16-be")

@@ -66,8 +66,9 @@
         </table>
     </div>
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.3/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.3/leaflet.css"/>
 
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -188,16 +189,7 @@
         }
 
         $(document).ready(function () {
-            flatpickr(".date-picker", {
-                dateFormat: "d.m.Y",
-                locale: "sk",
-                allowInput: true,
-                static: true,
-                position: "start"
-            });
-
-
-            $.fn.dataTable.moment('DD.MM.YYYY HH:mm:ss');
+                   $.fn.dataTable.moment('DD.MM.YYYY HH:mm:ss');
 
             table = $('#myGpsTable').DataTable({
                 processing: true,
@@ -293,6 +285,26 @@
 
 
         });
+
+        const fromDatePicker = flatpickr("#start-date", {
+                dateFormat: "d.m.Y",
+                locale: "sk",
+                static: true,
+                maxDate: "today",
+                onChange: function (selectedDates, dateStr) {
+                    toDatePickerHeatmap.set("minDate", dateStr);
+                }
+            });
+
+            const toDatePickerHeatmap = flatpickr("#end-date", {
+                dateFormat: "d.m.Y",
+                locale: "sk",
+                static: true,
+                maxDate: "today",
+                onChange: function (selectedDates, dateStr) {
+                    fromDatePicker.set("maxDate", dateStr);
+                }
+            });
 
         function clearDate(id) {
             document.getElementById(id).value = "";

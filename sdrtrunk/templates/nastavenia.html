@@ -121,7 +121,7 @@
                         "orderable": false,
                         "render": function (data, type, row) {
                             return `<button class="add-btn ${!row.valid ? 'disabled-btn' : ''}" data-frequency="${row.frequency}" ${!row.valid ? 'disabled title="Frekvencia je mimo monitorovaného pásma"' : ''}>Monitorovať frekvenciu</button>
-<button class="remove-btn ${!row.valid ? 'disabled-btn' : ''}" data-frequency="${row.frequency}" ${!row.valid ? 'disabled title="Frekvencia je mimo monitorovaného pásma"' : ''}>Prestať monitorovať frekvenciu</button>`;
+                                    <button class="remove-btn ${!row.valid ? 'disabled-btn' : ''}" data-frequency="${row.frequency}" ${!row.valid ? 'disabled title="Frekvencia je mimo monitorovaného pásma"' : ''}>Prestať monitorovať frekvenciu</button>`;
                         }
                     }
                 ],
@@ -138,32 +138,60 @@
             $('#myXMLTable tbody').on('click', 'button', function () {
                 let filePath = $(this).data('path');
 
-                fetch('/api/select-xml/', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({"file_path": filePath})
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.message) {
-                            Swal.fire({
-                                title: data.message,
-                                icon: 'success',
-                                confirmButtonText: 'OK'
-                            });
-                            $('#myXMLTable tbody tr').removeClass('selected-playlist');
-                            highlightSelectedRow();
-                            tableXML.ajax.reload();
-                            table.ajax.reload();
-                        } else {
-                            Swal.fire({
-                                title: data.error,
-                                icon: 'error',
-                                confirmButtonText: 'OK'
-                            });
-                        }
-                    })
-                    .catch(error => console.error("Chyba pri výbere XML súboru:", error));
+                Swal.fire({
+                    title: 'Naozaj zmeniť?',
+                    text: "Potvrdenie zmeny resetuje zoznam monitorovaných frekvencií?",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#28a745',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Áno',
+                    cancelButtonText: 'Zrušiť'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        fetch('/api/clear-monitored-channels')
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.message) {
+                                    fetch('/api/select-xml/', {
+                                        method: 'POST',
+                                        headers: {'Content-Type': 'application/json'},
+                                        body: JSON.stringify({"file_path": filePath})
+                                    })
+                                        .then(response => response.json())
+                                        .then(data => {
+                                            if (data.message) {
+                                                Swal.fire({
+                                                    title: data.message,
+                                                    icon: 'success',
+                                                    confirmButtonText: 'OK'
+                                                });
+                                                $('#myXMLTable tbody tr').removeClass('selected-playlist');
+                                                highlightSelectedRow();
+                                                tableXML.ajax.reload();
+                                                table.ajax.reload();
+                                            } else {
+                                                Swal.fire({
+                                                    title: data.error,
+                                                    icon: 'error',
+                                                    confirmButtonText: 'OK'
+                                                });
+                                            }
+                                        })
+                                        .catch(error => console.error("Chyba pri výbere XML súboru:", error));
+                                } else {
+                                    Swal.fire({
+                                        title: data.error,
+                                        icon: 'error',
+                                        confirmButtonText: 'OK'
+                                    });
+                                }
+                            })
+                            .catch(error => console.error("Chyba pri vymazaní monitorovaných frekvencií:", error));
+
+
+                    }
+                });
             });
 
 

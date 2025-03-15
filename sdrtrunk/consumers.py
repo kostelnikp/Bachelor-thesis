@@ -16,7 +16,8 @@ def update_sample_rate(sample_rate):
     except FileNotFoundError:
         config = {}
 
-    config['SAMPLE_RATE'] = sample_rate
+    sample_rateMHz = float(sample_rate) / 1_000_000
+    config['SAMPLE_RATE'] = str(sample_rateMHz)
 
     with open(config_file, 'w') as file:
         json.dump(config, file, indent=4)

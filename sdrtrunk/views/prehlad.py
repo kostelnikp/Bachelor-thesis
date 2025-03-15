@@ -34,3 +34,7 @@ class PrehladData(APIView):
             'most_used_frequency': most_used_frequency['frequency'] if most_used_frequency else None,
 
         })
+
+def currently_monitored_frequencies(request):
+    from sdrtrunk.views.nastavenia import get_selected_frequencies
+    return get_selected_frequencies(request)

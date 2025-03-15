@@ -77,7 +77,8 @@
                             <label for="start-date">
                                 <i class="fa fa-calendar"></i> Od:
                             </label>
-                            <input type="text" id="start-date-heatmap" class="date-picker" placeholder="Vyber dátum">
+                            <input type="text" id="start-date-heatmap" class="date-picker-heatmap"
+                                   placeholder="Vyber dátum">
                             <button class="clear-btn" onclick="clearDate('start-date-heatmap')">
                                 <i class="fa fa-times"></i>
                             </button>
@@ -86,7 +87,8 @@
                             <label for="end-date">
                                 <i class="fa fa-calendar"></i> Do:
                             </label>
-                            <input type="text" id="end-date-heatmap" class="date-picker" placeholder="Vyber dátum">
+                            <input type="text" id="end-date-heatmap" class="date-picker-heatmap"
+                                   placeholder="Vyber dátum">
                             <button class="clear-btn" onclick="clearDate('end-date-heatmap')">
                                 <i class="fa fa-times"></i>
                             </button>
@@ -165,7 +167,8 @@
             color: #7a7979;
         }
 
-        .filter-bar input.date-picker {
+        .filter-bar input.date-picker,
+        .filter-bar input.date-picker-heatmap {
             width: 140px;
             padding: 6px;
             border: none;
@@ -177,11 +180,13 @@
             transition: all 0.3s ease;
         }
 
-        .filter-bar input.date-picker:hover {
+        .filter-bar input.date-picker,
+        .filter-bar input.date-picker-heatmap {
             background: #eef5ff;
         }
 
-        .filter-bar input.date-picker:focus {
+        .filter-bar input.date-picker,
+        .filter-bar input.date-picker-heatmap {
             border: 1px solid #ffffff;
             box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
         }
@@ -664,22 +669,48 @@
             clearDate('start-date-heatmap');
             clearDate('end-date-heatmap');
 
-            flatpickr(".date-picker", {
+            const fromDatePicker = flatpickr("#start-date", {
                 dateFormat: "d.m.Y",
                 locale: "sk",
                 static: true,
                 maxDate: "today",
-                onChange: applyFilters,
-                position: "start"
+                onChange: function (selectedDates, dateStr) {
+                    toDatePicker.set("minDate", dateStr);
+                    applyFilters();
+                }
             });
 
-            flatpickr(".date-picker-heatmap", {
+            const toDatePicker = flatpickr("#end-date", {
                 dateFormat: "d.m.Y",
                 locale: "sk",
                 static: true,
                 maxDate: "today",
-                onChange: applyFiltersHeatmap,
-                position: "start"
+                onChange: function (selectedDates, dateStr) {
+                    fromDatePicker.set("maxDate", dateStr);
+                    applyFilters();
+                }
+            });
+
+            const fromDatePickerHeatmap = flatpickr("#start-date-heatmap", {
+                dateFormat: "d.m.Y",
+                locale: "sk",
+                static: true,
+                maxDate: "today",
+                onChange: function (selectedDates, dateStr) {
+                    toDatePickerHeatmap.set("minDate", dateStr);
+                    applyFiltersHeatmap();
+                }
+            });
+
+            const toDatePickerHeatmap = flatpickr("#end-date-heatmap", {
+                dateFormat: "d.m.Y",
+                locale: "sk",
+                static: true,
+                maxDate: "today",
+                onChange: function (selectedDates, dateStr) {
+                    fromDatePickerHeatmap.set("maxDate", dateStr);
+                    applyFiltersHeatmap();
+                }
             });
 
         });

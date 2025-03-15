@@ -25,7 +25,9 @@ def save_config(config):
 config = load_config()
 XML_FILE_PATH = config.get('XML_FILE_PATH')
 SDRTRUNK_PATH = config.get('SDRTRUNK_PATH')
-TARGET_XML_PATH = 'monitored_channels.xml'
+TARGET_XML_PATH = os.path.join(os.path.expanduser("~"), "SDRTrunk", "playlist", "monitored.xml")
+
+terminal_process = None
 
 
 def nastavenia(request):
@@ -141,6 +143,28 @@ def remove_monitored_channel(request):
         return JsonResponse({'error': 'Nepovolená metóda.'}, status=405)
 
 
+@csrf_exempt
+def clear_monitored_channels(request):
+    if request.method == 'GET':
+        try:
+            if not os.path.exists(TARGET_XML_PATH):
+                return JsonResponse({'error': 'Cieľový XML súbor neexistuje.'}, status=400)
+
+            target_tree = ET.parse(TARGET_XML_PATH)
+            target_root = target_tree.getroot()
+
+            for channel in list(target_root.findall('channel')):
+                target_root.remove(channel)
+
+            target_tree.write(TARGET_XML_PATH, encoding='utf-8', xml_declaration=True)
+
+            return JsonResponse({'message': 'Všetky monitorované kanály boli úspešne odstránené.'})
+        except Exception as e:
+            return JsonResponse({'error': 'Chyba pri spracovaní'}, status=500)
+    else:
+        return JsonResponse({'error': 'Nepovolená metóda.'}, status=405)
+
+
 def load_frequencies(request):
     try:
         if not XML_FILE_PATH:
@@ -160,9 +184,6 @@ def load_frequencies(request):
             sample_rate = float(config.get('SAMPLE_RATE'))
             min_frequency = center_frequency - sample_rate / 2
             max_frequency = center_frequency + sample_rate / 2
-
-
-
 
         channels = []
         for channel in root.findall('channel'):
@@ -200,7 +221,7 @@ def load_playlist_files(request):
 
         files = []
         for file in os.listdir(playlist_dir):
-            if file.lower().endswith('.xml'):
+            if file.lower().endswith('.xml') and file != 'monitored.xml':
                 files.append({'file_name': file, 'file_path': os.path.join(playlist_dir, file)})
 
         return JsonResponse({'data': files})
@@ -227,12 +248,14 @@ def select_xml(request):
         except Exception as e:
             return JsonResponse({"error": "Pri požiadavke nastala chyba."}, status=400)
 
+
 @csrf_exempt
 def get_selected_playlist(request):
     global XML_FILE_PATH
     if XML_FILE_PATH:
         return JsonResponse({"selected_playlist_path": XML_FILE_PATH})
     return JsonResponse({"error": "Žiadny vybraný playlist"}, status=404)
+
 
 @csrf_exempt
 def get_selected_frequencies(request):
@@ -257,8 +280,6 @@ def get_selected_frequencies(request):
             return JsonResponse({'error': f'Nepodarilo sa získať frekvencie: {str(e)}'}, status=500)
     else:
         return JsonResponse({'error': 'Cesta ku XML nie je platná'}, status=404)
-
-
 
 
 def get_bat_path(request):
@@ -287,9 +308,6 @@ def update_bat_path(request):
             return JsonResponse({"error": str(e)}, status=400)
 
     return JsonResponse({"error": "Nepodporovaná metóda"}, status=405)
-
-
-terminal_process = None
 
 
 @csrf_exempt

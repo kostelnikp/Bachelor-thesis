@@ -22,7 +22,8 @@ from sdrtrunk.views import statistiky, prehlad, historia_prevozu, mapa, PieChart
     get_gps_data, ApiDmrHistory, dmr_detail, nastavenia, get_bat_path, \
     update_bat_path, start_restart_sdrtrunk, delete_dmr_data, ApiGpsHistory, add_gps_data, \
     delete_gps_data, available_events, load_frequencies, add_monitored_channel, remove_monitored_channel, \
-    load_playlist_files, select_xml, get_selected_playlist, get_selected_frequencies
+    load_playlist_files, select_xml, get_selected_playlist, get_selected_frequencies, currently_monitored_frequencies, \
+    decode_short_data_packet, clear_monitored_channels
 
 urlpatterns = [
     path('', prehlad, name='prehlad'),
@@ -32,6 +33,7 @@ urlpatterns = [
     # Prehlad
     path('prehlad/', prehlad, name='prehlad'),
     path('api/prehlad-data/', PrehladData.as_view(), name='prehlad-data'),
+    path('api/currently-monitored-frequencies/', currently_monitored_frequencies, name='currently-monitored-frequencies'),
 
     # Historia prevozu
     path('historia_prevozu/', historia_prevozu, name='historia_prevozu'),
@@ -39,6 +41,7 @@ urlpatterns = [
     path('api/dmr-history/', ApiDmrHistory.as_view(), name='dmr-history-api'),
     path('api/dmr-detail/<int:event_id>/', dmr_detail, name='dmr_detail'),
     path('api/dmr-delete/<int:event_id>/', delete_dmr_data, name='delete_dmr_data'),
+    path('api/decode-short-data-packet/', decode_short_data_packet, name='decode-short-data-packet'),
 
     # Mapa
     path('mapa/', mapa, name='mapa'),
@@ -67,5 +70,6 @@ urlpatterns = [
     path('api/select-xml/', select_xml, name='select-xml'),
     path('api/get-selected-playlist/', get_selected_playlist, name='get-selected-playlist'),
     path('api/get-selected-frequencies/', get_selected_frequencies, name='get-selected-frequencies'),
+    path('api/clear-monitored-channels', clear_monitored_channels, name='clear-monitored-channels'),
 
 ]

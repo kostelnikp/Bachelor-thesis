@@ -41,7 +41,7 @@ class SDRTrunkConsumer(WebsocketConsumer):
         else:
             event_match = re.search(r'DMR DECODE EVENT:\s+([A-Za-z\s]+)\s', text_data)
             if not event_match:
-                logger.error("Typ eventu nebol nájdený v dátach")
+                logger.error("Typ eventu nebol nájdený v dátach") 
                 return
             event_type = event_match.group(1).strip()
 

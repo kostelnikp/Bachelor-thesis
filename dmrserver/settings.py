@@ -50,32 +50,59 @@ CHANNEL_LAYERS = {
     },
 }
 
+# Ensure the log directories exist
+error_log_dir = Path(BASE_DIR / 'logs/errors')
+error_log_dir.mkdir(parents=True, exist_ok=True)
+
+debug_log_dir = Path(BASE_DIR / 'logs/debug')
+debug_log_dir.mkdir(parents=True, exist_ok=True)
+
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
         'verbose': {
-            'format': '{levelname} {asctime} {module} {message}',
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {filename}:{lineno} {message}',
             'style': '{',
-            'datefmt': '%Y-%m-%d %H:%M:%S',  # Formát dátumu a času
+            'datefmt': '%Y-%m-%d %H:%M:%S',
         },
-        'simple': {
-            'format': '{levelname} {message}',
-            'style': '{',
+        'color': {
+            '()': 'colorlog.ColoredFormatter',
+            'format': '%(log_color)s%(levelname)s %(asctime)s %(module)s %(filename)s:%(lineno)d - %(message)s',
+            'log_colors': {
+                'DEBUG': 'cyan',
+                'INFO': 'green',
+                'WARNING': 'yellow',
+                'ERROR': 'red',
+                'CRITICAL': 'bold_red',
+            },
+            'datefmt': '%Y-%m-%d %H:%M:%S',
         },
     },
     'handlers': {
         'file': {
             'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': 'debug.log',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': 'logs/debug/debug.log',
+            'maxBytes': 10 * 1024 * 1024,
+            'backupCount': 5,
+            'encoding': 'utf-8',
+            'formatter': 'verbose',
+        },
+        'error_file': {
+            'level': 'ERROR',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': 'logs/errors/errors.log',
+            'maxBytes': 10 * 1024 * 1024,
+            'backupCount': 5,
             'encoding': 'utf-8',
             'formatter': 'verbose',
         },
         'console': {
             'level': 'DEBUG',
             'class': 'logging.StreamHandler',
-            'formatter': 'verbose',  # Použitie verbose formátovania
+            'formatter': 'color',
         },
     },
     'loggers': {
@@ -87,6 +114,11 @@ LOGGING = {
         'sdrtrunk.consumers': {
             'handlers': ['file', 'console'],
             'level': 'DEBUG',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['error_file', 'console'],
+            'level': 'ERROR',
             'propagate': False,
         },
     },

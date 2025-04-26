@@ -35,7 +35,6 @@ class GPSData(models.Model):
     def __str__(self):
         formatted_timestamp = self.dmr_data.timestamp.strftime("%Y-%m-%d %H:%M:%S") if self.dmr_data.timestamp else "N/A"
 
-
         return f"GPS Data ({self.latitude}, {self.longitude}) for Event: {formatted_timestamp}, Source: {self.dmr_data.source}"
 
     class Meta:

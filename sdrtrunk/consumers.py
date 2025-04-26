@@ -208,9 +208,16 @@ class SDRTrunkConsumer(WebsocketConsumer):
 
         # Uloženie eventu do parsed_data, aby bol dostupný pre databázu
         data["event"] = event_type
-
         # Konverzia údajov
-        data["timestamp"] = datetime.strptime(data["timestamp"], "%a %b %d %H:%M:%S CET %Y")
+        timestamp = data["timestamp"]
+
+        # Nahradenie časového pásma textovým offsetom
+        if "CEST" in timestamp:
+            timestamp = timestamp.replace("CEST", "+0200")
+        elif "CET" in timestamp:
+            timestamp = timestamp.replace("CET", "+0100")
+
+        data["timestamp"] = datetime.strptime(timestamp, "%a %b %d %H:%M:%S %z %Y")
         data["duration"] = int(data["duration"]) / 1000 if "duration" in data else None
         data["frequency"] = float(data["frequency"])
         data["event_id"] = int(data["event_id"])
@@ -322,9 +329,6 @@ class SDRTrunkConsumer(WebsocketConsumer):
                         )
                     else:
                         logger.error(f"GPS event {gps_id} nemá priradený DMR event!")
-
-
-
             else:
                 DMRData.objects.create(
                     timestamp=parsed_data.get("timestamp"),

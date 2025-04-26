@@ -4,97 +4,195 @@
     <meta charset="UTF-8">
     <title>Aplikácia pre monitoring DMR prevádzky cez SDR</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
     <style>
         body {
             font-family: "Lato", sans-serif;
             margin: 0;
+            padding: 0;
             display: flex;
         }
 
-        .sidenav {
+        .sidebar {
             height: 100vh;
             width: 250px;
+            background-color: #111;
             position: fixed;
             top: 0;
             left: 0;
-            background-color: #111;
-            overflow-y: auto;
-            padding-top: 60px;
+            display: flex;
+            flex-direction: column;
             transition: width 0.3s;
+            z-index: 1000;
+        }
+
+        .toggle-btn {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            font-size: 20px;
+            color: white;
+            cursor: pointer;
+            z-index: 1001;
+        }
+
+        .sidebar-header {
+            padding: 15px 0;
+            text-align: center;
+            color: white;
+            margin-top: 30px;
+            border-bottom: 1px solid #333;
+        }
+
+        .sidebar-menu {
+            padding: 10px 0;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .sidebar-menu a {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 10px 20px;
+            color: #818181;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+
+        .sidebar-menu a:hover {
+            color: white;
+            background-color: #1e1e1e;
+            border-left: 4px solid #007bff;
+        }
+
+        .sidebar-menu a.active {
+            color: white;
+            background-color: #1e1e1e;
+            border-left: 4px solid #007bff;
+        }
+
+        .sidebar-footer {
+            background-color: #222;
+            padding: 10px 15px;
+            border-top: 1px solid #333;
+            color: white;
             display: flex;
             flex-direction: column;
         }
 
-        .sidenav a {
-            padding: 15px 25px;
-            text-decoration: none;
-            font-size: 18px;
-            color: #818181;
+        .user-info {
             display: flex;
             align-items: center;
-            gap: 15px;
-            transition: color 0.3s;
+            gap: 10px;
+            margin-bottom: 10px;
         }
 
-        .sidenav a:hover {
-            color: #f1f1f1;
-        }
-
-        .sidenav.collapsed {
-            width: 60px;
-        }
-
-        .sidenav.collapsed a {
+        .user-avatar {
+            width: 35px;
+            height: 35px;
+            background-color: #007bff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
             justify-content: center;
-            padding: 15px 0;
-            opacity: 0;
-            pointer-events: none;
+            font-size: 16px;
         }
 
-        .sidenav.collapsed a span {
-            display: none;
+        .user-details {
+            flex: 1;
         }
 
-        #toggle-button {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            font-size: 20px;
-            background-color: #111;
+        .user-name {
+            font-weight: bold;
+            margin: 0;
+        }
+
+        .user-role {
+            font-size: 12px;
+            color: #ccc;
+            margin: 0;
+        }
+
+        .logout-btn {
+            background-color: #dc3545;
             color: white;
             border: none;
+            border-radius: 5px;
+            padding: 6px 12px;
             cursor: pointer;
-            padding: 10px;
-            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: background-color 0.3s;
+            margin-top: 5px;
+            width: 100%;
+            font-size: 14px;
+        }
+
+        .logout-btn:hover {
+            background-color: #c82333;
         }
 
         #main {
-            margin-left: 250px;
-            padding: 16px;
-            flex-grow: 1;
+            margin: 0 25px 0 50px;
+            flex: 1;
+            padding: 0;
             transition: margin-left 0.3s;
         }
 
-        .sidenav.collapsed + #main {
-            margin-left: 60px;
+        .sidebar.collapsed {
+            width: 60px;
+        }
+
+        .sidebar.collapsed .sidebar-header h3 {
+            display: none;
+        }
+
+        .sidebar.collapsed .sidebar-menu a span {
+            display: none;
+        }
+
+        .sidebar.collapsed .user-details {
+            display: none;
+        }
+
+        .sidebar.collapsed .logout-btn span {
+            display: none;
+        }
+
+        .sidebar:not(.collapsed) + #main {
+            margin-left: 250px;
+        }
+
+        .sidebar.collapsed .sidebar-menu a {
+            justify-content: center;
+            padding: 10px 0;
+        }
+
+        .sidebar.collapsed .logout-btn {
+            justify-content: center;
+            padding: 6px;
+        }
+
+        .sidebar.collapsed .user-avatar {
+            width: 50px;
+            height: 30px;
         }
 
         @media screen and (max-width: 768px) {
-            .sidenav {
+            .sidebar {
                 width: 200px;
             }
 
-            .sidenav.collapsed {
+            .sidebar.collapsed {
                 width: 50px;
             }
 
-            #main {
+            .sidebar:not(.collapsed) + #main {
                 margin-left: 200px;
-            }
-
-            .sidenav.collapsed + #main {
-                margin-left: 50px;
             }
         }
 
@@ -108,38 +206,76 @@
     </style>
 </head>
 <body>
+    <div class="sidebar" id="sidebar">
+        <div class="toggle-btn" onclick="toggleSidebar()">
+            <i class="fas fa-bars"></i>
+        </div>
+        
+        <div class="sidebar-header">
+            <h3>DMR Monitoring</h3>
+        </div>
+        
+        <div class="sidebar-menu">
+            <a href="{% url 'prehlad' %}" class="{% if request.path == '/prehlad/' or request.path == '/' %}active{% endif %}">
+                <i class="fas fa-chart-line"></i>
+                <span>Prehľad</span>
+            </a>
+            <a href="{% url 'historia_prevozu' %}" class="{% if request.path == '/historia_prevozu/' %}active{% endif %}">
+                <i class="fas fa-history"></i>
+                <span>História prenosu</span>
+            </a>
+            <a href="{% url 'mapa' %}" class="{% if request.path == '/mapa/' %}active{% endif %}">
+                <i class="fas fa-map-marked-alt"></i>
+                <span>Mapa</span>
+            </a>
+            <a href="{% url 'statistiky' %}" class="{% if request.path == '/statistiky/' %}active{% endif %}">
+                <i class="fas fa-chart-pie"></i>
+                <span>Štatistiky</span>
+            </a>
+            <a href="{% url 'nastavenia' %}" class="{% if request.path == '/nastavenia/' %}active{% endif %}">
+                <i class="fas fa-cogs"></i>
+                <span>Nastavenia</span>
+            </a>
+            <a href="{% url 'admin:index' %}" class="{% if '/admin/' in request.path %}active{% endif %}">
+                <i class="fas fa-user-shield"></i>
+                <span>Admin</span>
+            </a>
+        </div>
+        
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="user-details">
+                    <p class="user-name">{{ request.user.username }}</p>
+                    <p class="user-role">Prihlásený používateľ</p>
+                </div>
+            </div>
+            
+            <form action="{% url 'logout' %}" method="post">
+                {% csrf_token %}
+                <button type="submit" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Odhlásiť sa</span>
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="main">
+        {% block body %}
+        {% endblock %}
+    </div>
 
-<button id="toggle-button" onclick="toggleMenu()">&#9776;</button>
-<div class="sidenav collapsed" id="sidenav">
-    <a href="{% url 'prehlad' %}">
-        <span>Prehľad</span>
-    </a>
-    <a href="{% url 'historia_prevozu' %}">
-        <span>História prevozu</span>
-    </a>
-    <a href="{% url 'mapa' %}">
-        <span>Mapa</span>
-    </a>
-    <a href="{% url 'statistiky' %}">
-        <span>Štatistiky</span>
-    </a>
-    <a href="{% url 'nastavenia' %}">
-        <span>Nastavenia</span>
-    </a>
-    <a href="{% url 'admin:index' %}">
-        <span>Admin</span>
-    </a>
-</div>
-
-{% block body %}
-{% endblock %}
-
-<script>
-    function toggleMenu() {
-        const sidenav = document.getElementById("sidenav");
-        sidenav.classList.toggle("collapsed");
-    }
-</script>
-
+    <script>
+        function toggleSidebar() {
+            document.getElementById("sidebar").classList.toggle("collapsed");
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById("sidebar").classList.remove("collapsed");
+        });
+    </script>
 </body>
 </html>

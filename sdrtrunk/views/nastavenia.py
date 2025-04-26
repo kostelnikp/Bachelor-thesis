@@ -8,6 +8,7 @@ from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 from plotly.io._orca import psutil
 from rest_framework.utils import json
+from django.contrib.auth.decorators import login_required
 
 CONFIG_FILE = "config.json"
 
@@ -30,6 +31,7 @@ TARGET_XML_PATH = os.path.join(os.path.expanduser("~"), "SDRTrunk", "playlist", 
 terminal_process = None
 
 
+@login_required
 def nastavenia(request):
     return render(request, 'nastavenia.html')
 

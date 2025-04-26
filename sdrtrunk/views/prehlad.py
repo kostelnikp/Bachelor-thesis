@@ -2,10 +2,12 @@ from django.db.models import Count, Avg
 from django.shortcuts import render
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.contrib.auth.decorators import login_required
 
 from sdrtrunk.models import DMRData
 
 
+@login_required
 def prehlad(request):
     return render(request, 'prehlad.html')
 

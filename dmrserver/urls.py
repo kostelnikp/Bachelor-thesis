@@ -15,7 +15,8 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
+from django.contrib.auth import views as auth_views
 
 from sdrtrunk.views import statistiky, prehlad, historia_prevozu, mapa, PieChartData, BarChartData, FrequencyChartData, \
     SourceDestinationChordData, HeatmapChartData, PrehladData, \
@@ -23,7 +24,7 @@ from sdrtrunk.views import statistiky, prehlad, historia_prevozu, mapa, PieChart
     update_bat_path, start_restart_sdrtrunk, delete_dmr_data, ApiGpsHistory, add_gps_data, \
     delete_gps_data, available_events, load_frequencies, add_monitored_channel, remove_monitored_channel, \
     load_playlist_files, select_xml, get_selected_playlist, get_selected_frequencies, currently_monitored_frequencies, \
-    decode_short_data_packet, clear_monitored_channels
+    decode_short_data_packet, clear_monitored_channels, decode_unknown_packet, available_detail_types
 
 urlpatterns = [
     path('', prehlad, name='prehlad'),
@@ -38,10 +39,12 @@ urlpatterns = [
     # Historia prevozu
     path('historia_prevozu/', historia_prevozu, name='historia_prevozu'),
     path('api/available-events/', available_events, name='available-events-api'),
+    path('api/available-detail-types/', available_detail_types, name='available-detail-types-api'),
     path('api/dmr-history/', ApiDmrHistory.as_view(), name='dmr-history-api'),
     path('api/dmr-detail/<int:event_id>/', dmr_detail, name='dmr_detail'),
     path('api/dmr-delete/<int:event_id>/', delete_dmr_data, name='delete_dmr_data'),
     path('api/decode-short-data-packet/', decode_short_data_packet, name='decode-short-data-packet'),
+    path('api/decode-unknown-packet/', decode_unknown_packet, name='decode-unknown-packet'),
 
     # Mapa
     path('mapa/', mapa, name='mapa'),
@@ -72,4 +75,13 @@ urlpatterns = [
     path('api/get-selected-frequencies/', get_selected_frequencies, name='get-selected-frequencies'),
     path('api/clear-monitored-channels', clear_monitored_channels, name='clear-monitored-channels'),
 
+    # Authentication
+    path('login/', auth_views.LoginView.as_view(), name='login'),
+    path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+    path('accounts/password_change/', auth_views.PasswordChangeView.as_view(), name='password_change'),
+    path('accounts/password_change/done/', auth_views.PasswordChangeDoneView.as_view(), name='password_change_done'),
+    path('accounts/password_reset/', auth_views.PasswordResetView.as_view(), name='password_reset'),
+    path('accounts/password_reset/done/', auth_views.PasswordResetDoneView.as_view(), name='password_reset_done'),
+    path('accounts/reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    path('accounts/reset/done/', auth_views.PasswordResetCompleteView.as_view(), name='password_reset_complete'),
 ]

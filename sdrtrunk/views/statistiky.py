@@ -5,10 +5,12 @@ from django.db.models.functions import ExtractWeekDay, ExtractHour
 from django.shortcuts import render
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.contrib.auth.decorators import login_required
 
 from sdrtrunk.models import DMRData
 
 
+@login_required
 def statistiky(request):
     return render(request, 'statistiky.html')
 

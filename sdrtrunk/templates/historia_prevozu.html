@@ -47,6 +47,70 @@
                 <label for="filterFrequency"><i class="fas fa-wave-square"></i> Frekvencia:</label>
                 <input type="text" id="filterFrequency" placeholder="Filtrovať podľa frekvencie">
             </div>
+            
+            
+
+            <div class="filter-group">
+                <button type="button" id="toggleAdvancedFilters" class="btn btn-custom">
+                    <i class="fas fa-filter"></i> Rozšírené filtrovanie
+                    <i class="fas fa-chevron-down toggle-icon"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div id="advancedFiltersContainer" style="display: none;">
+            <div class="advanced-filters">
+                <h3><i class="fas fa-sliders-h"></i> Pokročilé filtre</h3>
+                
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label for="filterDetails"><i class="fas fa-search-plus"></i> Detail obsahuje:</label>
+                        <input type="text" id="filterDetails" placeholder="Filtrovať podľa obsahu detailov">
+                    </div>
+
+
+                    <div class="filter-group">
+                        <label for="minDuration"><i class="fas fa-clock"></i> Dĺžka:</label>
+                        <div class="duration-inputs">
+                            <input type="number" id="minDuration" placeholder="Min (s)" min="0" step="0.1" class="duration-input">
+                            <span>-</span>
+                            <input type="number" id="maxDuration" placeholder="Max (s)" min="0" step="0.1" class="duration-input">
+                        </div>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="filterTimeslot"><i class="fas fa-layer-group"></i> Timeslot:</label>
+                        <select id="filterTimeslot">
+                            <option value="">Všetky</option>
+                            <option value="1">Timeslot 1</option>
+                            <option value="2">Timeslot 2</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="filterColorCode"><i class="fas fa-palette"></i> Color code:</label>
+                        <select id="filterColorCode">
+                            <option value="">Všetky</option>
+                            <option value="0">0</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                            <option value="6">6</option>
+                            <option value="7">7</option>
+                            <option value="8">8</option>
+                            <option value="9">9</option>
+                            <option value="10">10</option>
+                            <option value="11">11</option>
+                            <option value="12">12</option>
+                            <option value="13">13</option>
+                            <option value="14">14</option>
+                            <option value="15">15</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <table id="myTable" class="display stripe hover cell-border" style="width:100%">
@@ -144,8 +208,13 @@
                         d.filterSource = $('#filterSource').val();
                         d.filterDestination = $('#filterDestination').val();
                         d.filterFrequency = $('#filterFrequency').val();
+                        d.filterDetails = $('#filterDetails').val();
                         d.start_date = $('#start-date').val();
                         d.end_date = $('#end-date').val();
+                        d.minDuration = $('#minDuration').val();
+                        d.maxDuration = $('#maxDuration').val();
+                        d.filterTimeslot = $('#filterTimeslot').val();
+                        d.filterColorCode = $('#filterColorCode').val();
                     }
                 },
                 columns: [
@@ -170,7 +239,7 @@
                 }
             });
 
-            $('#filterEvent, #filterSource, #filterDestination, #filterFrequency, #start-date, #end-date').on('keyup change', function () {
+            $('#filterEvent, #filterSource, #filterDestination, #filterFrequency, #start-date, #end-date, #minDuration, #maxDuration, #filterTimeslot, #filterColorCode').on('keyup change', function () {
                 table.draw();
             });
 
@@ -186,21 +255,6 @@
                     let details = data.details ? (data.details !== "SERVICE OPTIONS []" ? data.details : "") : "Žiadne";
                     let decodedData = "";
 
-                    if (details.split(":")[0].includes("DEFINED SHORT DATA PACKET")) {
-                        let decodeResponse = await fetch('/api/decode-short-data-packet/', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({details: details.split(":")[1]})
-                        });
-                        if (!decodeResponse.ok) {
-                            throw new Error(`Chyba: ${decodeResponse.status}`);
-                        }
-                        let decodeData = await decodeResponse.json();
-                        decodedData = decodeData.decoded_details;
-                    }
-
                     if (data.event.includes("SMS")) {
                         if (!details.includes("Error")) {
                             let byteArray = new Uint8Array(details.split('').map(char => char.charCodeAt(0)));
@@ -211,25 +265,113 @@
                         }
 
                     }
+                    const isShortData = details.includes("DEFINED SHORT DATA PACKET");
+                    const isUnknownData = details.includes("UNKNOWN PACKET");
 
-                    Swal.fire({
-                        title: 'Detaily udalosti',
-                        html: `
-                <b>Časový záznam:</b> ${data.timestamp} <br>
-                ${data.duration_s > 0 ? `<b>Dĺžka:</b> ${data.duration_s} s <br>` : ''}
-                <b>Event:</b> ${data.event} <br>
-                ${data.source ? `<b>Zdroj:</b> ${data.source} <br>` : ''}
-                ${data.destination ? `<b>Cieľ:</b> ${data.destination} <br>` : ''}
-                ${data.channel_number ? `<b>Číslo kanálu:</b> ${data.channel_number} <br>` : ''}
-                <b>Frekvencia:</b> ${data.frequency} MHz <br>
-                ${data.timeslot ? `<b>Timeslot:</b> ${data.timeslot} <br>` : ''}
-                ${data.color_code ? `<b>Color code:</b> ${data.color_code} <br>` : ''}
-                ${details ? `<b>Detaily:</b> ${details} <br>` : ''}
-                ${decodedData ? `<b>Dekódované detaily:</b> ${decodedData} <br>` : ''}
-            `,
-                        icon: 'info',
-                        confirmButtonText: 'Zatvoriť'
-                    });
+                    if (isShortData || isUnknownData) {
+                        let extraOptions = '';
+
+                        if (isUnknownData) {
+                            extraOptions = `
+                    <label for="decodeType"><b>Typ dekódovania:</b></label>
+                    <select id="decodeType" class="swal-select" style="width:100%;">
+                        <option value="ascii">ASCII</option>
+                        <option value="utf-8">UTF-8</option>
+                        <option value="utf-16">UTF-16</option>
+                    </select><br><br>
+                    <label for="startPos"><b>Začiatok (index):</b></label>
+                    <input type="number" id="startPos" class="swal-input" placeholder="0" value="0">
+                    <label for="endPos"><b>Koniec (index):</b></label>
+                    <input type="number" id="endPos" class="swal-input" placeholder="10" value="10"><br>
+                `;
+                        }
+
+                        await Swal.fire({
+                            title: 'Dekódovanie dát',
+                            html: `
+                    <b>Časový záznam:</b> ${data.timestamp} <br>
+                    ${data.duration_s > 0 ? `<b>Dĺžka:</b> ${data.duration_s} s <br>` : ''}
+                    <b>Event:</b> ${data.event} <br>
+                    ${data.source ? `<b>Zdroj:</b> ${data.source} <br>` : ''}
+                    ${data.destination ? `<b>Cieľ:</b> ${data.destination} <br>` : ''}
+                    ${data.channel_number ? `<b>Číslo kanálu:</b> ${data.channel_number} <br>` : ''}
+                    <b>Frekvencia:</b> ${data.frequency} MHz <br>
+                    ${data.timeslot ? `<b>Timeslot:</b> ${data.timeslot} <br>` : ''}
+                    ${data.color_code ? `<b>Color code:</b> ${data.color_code} <br>` : ''}
+                    ${details ? `<b>Detaily:</b><span id="detailsData"> ${details} </span><br>` : ''}
+                    ${extraOptions}
+                `,
+                            showCancelButton: true,
+                            confirmButtonText: 'Dekódovať',
+                            cancelButtonText: 'Zatvoriť',
+                            preConfirm: async () => {
+                                let rawData = document.getElementById("detailsData").innerText;
+
+                                rawData = rawData.split(":").slice(1).join(":");
+
+                                let payload = {details: rawData};
+
+                                if (isUnknownData) {
+                                    payload.decodeType = document.getElementById("decodeType").value;
+                                    payload.startPos = parseInt(document.getElementById("startPos").value);
+                                    payload.endPos = parseInt(document.getElementById("endPos").value);
+                                }
+
+
+                                const endpoint = isShortData
+                                    ? '/api/decode-short-data-packet/'
+                                    : '/api/decode-unknown-packet/';
+
+
+                                const decodeResponse = await fetch(endpoint, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify(payload)
+                                });
+
+                                if (!decodeResponse.ok) {
+                                    throw new Error(`Chyba: ${decodeResponse.status}`);
+                                }
+
+                                const result = await decodeResponse.json();
+
+                                if (result.decoded_details) {
+                                    Swal.fire({
+                                        title: 'Úspešne dekódované',
+                                        text: result.decoded_details,
+                                        icon: 'success',
+                                        confirmButtonText: 'Zatvoriť'
+                                    });
+                                }
+                                else {
+                                    Swal.fire({
+                                        title: 'Chyba!',
+                                        text: 'Nepodarilo sa dekódovať dáta.',
+                                        icon: 'error',
+                                        confirmButtonText: 'Zatvoriť'
+                                    });
+                                }
+                            }
+                        });
+                    } else {
+                        // klasické zobrazenie detailov
+                        Swal.fire({
+                            title: 'Detaily udalosti',
+                            html: `
+                    <b>Časový záznam:</b> ${data.timestamp} <br>
+                    ${data.duration_s > 0 ? `<b>Dĺžka:</b> ${data.duration_s} s <br>` : ''}
+                    <b>Event:</b> ${data.event} <br>
+                    ${data.source ? `<b>Zdroj:</b> ${data.source} <br>` : ''}
+                    ${data.destination ? `<b>Cieľ:</b> ${data.destination} <br>` : ''}
+                    <b>Frekvencia:</b> ${data.frequency} MHz <br>
+                    ${details ? `<b>Detaily:</b> ${details} <br>` : ''}
+                `,
+                            icon: 'info',
+                            confirmButtonText: 'Zatvoriť'
+                        });
+                    }
                 } catch (error) {
                     Swal.fire('Chyba!', 'Nepodarilo sa načítať detaily.', 'error');
                 }
@@ -274,8 +416,46 @@
                         icon: 'error',
                         confirmButtonText: 'Zatvoriť'
                     });
-
                 });
+                
+            fetch('/api/available-detail-types/')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Chyba: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    $('#filterDetails').autocomplete({
+                        source: data.detail_types,
+                        minLength: 0
+                    });
+                })
+                .catch(error => {
+                    Swal.fire({
+                        title: 'Chyba!',
+                        text: error,
+                        icon: 'error',
+                        confirmButtonText: 'Zatvoriť'
+                    });
+                });
+
+            $('#filterDetails').on('keyup change', function () {
+                table.draw();
+            });
+
+            $('#toggleAdvancedFilters').on('click', function() {
+                const container = $('#advancedFiltersContainer');
+                const icon = $(this).find('.toggle-icon');
+                
+                if (container.is(':visible')) {
+                    container.slideUp(300);
+                    icon.removeClass('open');
+                } else {
+                    container.slideDown(300);
+                    icon.addClass('open');
+                }
+            });
 
         });
 
@@ -284,6 +464,11 @@
             table.draw();
         }
 
+        function applyDetailPreset() {
+            const presetValue = document.getElementById('detailsPresets').value;
+            document.getElementById('filterDetails').value = presetValue;
+            table.draw();
+        }
 
     </script>
 
@@ -419,6 +604,108 @@
             outline: none;
         }
 
+        .btn-custom {
+            color: #555;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: bold;
+            font-size: 14px;
+        }
 
+       
+
+        .toggle-icon {
+            transition: transform 0.3s ease;
+        }
+
+        .toggle-icon.open {
+            transform: rotate(180deg);
+        }
+
+        #advancedFiltersContainer {
+            width: 100%;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+
+        .advanced-filters {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+            padding: 15px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            margin: 10px 0;
+        }
+
+        .advanced-filters h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #555;
+            font-size: 18px;
+            border-bottom: 1px solid #e9ecef;
+            padding-bottom: 10px;
+        }
+
+        .filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .duration-inputs {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .duration-input {
+            width: 80px;
+            padding: 6px 10px !important;
+        }
+
+        select {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s ease;
+            background: #fff;
+        }
+
+        select:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+        }
     </style>
+
+    <script>
+        $(document).ready(function() {
+            // Přidání animace pro přepínání rozšířených filtrů
+            $('#toggleAdvancedFilters').on('click', function() {
+                const container = $('#advancedFiltersContainer');
+                const icon = $(this).find('.toggle-icon');
+                
+                container.toggleClass('show');
+                icon.toggleClass('open');
+                
+                if (container.hasClass('show')) {
+                    $(this).find('span').text(' Skrýť rozšírené možnosti');
+                } else {
+                    $(this).find('span').text(' Rozšírené možnosti filtrovania');
+                }
+            });
+            
+            // Původní inicializace z připraveného kódu
+            // ...existing code...
+        });
+    </script>
 {% endblock %}

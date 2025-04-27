@@ -144,7 +144,7 @@
             <b>Zemepisná výška:</b> ${point.longitude} <br>
             ${
                 point.details
-                    ? (point.details !== "SERVICE OPTIONS []"
+                    ? (point.details !== "SERVICE OPTIONS []" && point.details.length <= 20
                             ? `<b>Detaily:</b> ${point.details}`
                             : ""
                     )

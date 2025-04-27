@@ -263,119 +263,286 @@
                         } else {
                             details = "";
                         }
-
                     }
+                    
                     const isShortData = details.includes("DEFINED SHORT DATA PACKET");
                     const isUnknownData = details.includes("UNKNOWN PACKET");
+                    
+                    let recommendedSettings = {
+                        startPos: 9,
+                        endPos: -4,
+                        decodeType: 'ascii'
+                    };
+                    
+                    if (isUnknownData) {
+                        const hexMatch = details.match(/UNKNOWN PACKET:(.*)/);
+                        if (hexMatch && hexMatch[1]) {
+                            const hexPart = hexMatch[1].trim();
+                            
+                            if (hexPart.length > 15) {
+                                if (/[0-9A-F]{8}$/.test(hexPart)) {
+                                    recommendedSettings.endPos = hexPart.length - 8;
+                                }
+                            }
+                            
+                            const possibleAscii = /[0-9A-F]{2}[20-7E][0-9A-F]{2}[20-7E]/.test(hexPart.substring(recommendedSettings.startPos));
+                            if (possibleAscii) {
+                                recommendedSettings.decodeType = 'ascii';
+                            } else {
+                                const possibleUtf16 = /00[0-9A-F]{2}00[0-9A-F]{2}/.test(hexPart.substring(recommendedSettings.startPos));
+                                if (possibleUtf16) {
+                                    recommendedSettings.decodeType = 'utf-16';
+                                }
+                            }
+                        }
+                    }
 
                     if (isShortData || isUnknownData) {
-                        let extraOptions = '';
+                        const sweetAlertContent = `
+                            <div class="decode-container">
+                                <div class="packet-info">
+                                    <h4 class="section-title">Informácie o pakete</h4>
+                                    <div class="info-row"><span class="info-label">Časový záznam:</span> <span class="info-value">${data.timestamp}</span></div>
+                                    ${data.duration_s > 0 ? `<div class="info-row"><span class="info-label">Dĺžka:</span> <span class="info-value">${data.duration_s} s</span></div>` : ''}
+                                    <div class="info-row"><span class="info-label">Event:</span> <span class="info-value">${data.event}</span></div>
+                                    ${data.source ? `<div class="info-row"><span class="info-label">Zdroj:</span> <span class="info-value">${data.source}</span></div>` : ''}
+                                    ${data.destination ? `<div class="info-row"><span class="info-label">Cieľ:</span> <span class="info-value">${data.destination}</span></div>` : ''}
+                                    ${data.channel_number ? `<div class="info-row"><span class="info-label">Číslo kanálu:</span> <span class="info-value">${data.channel_number}</span></div>` : ''}
+                                    <div class="info-row"><span class="info-label">Frekvencia:</span> <span class="info-value">${data.frequency} MHz</span></div>
+                                    ${data.timeslot ? `<div class="info-row"><span class="info-label">Timeslot:</span> <span class="info-value">${data.timeslot}</span></div>` : ''}
+                                    ${data.color_code ? `<div class="info-row"><span class="info-label">Color code:</span> <span class="info-value">${data.color_code}</span></div>` : ''}
+                                </div>
+                                
+                                <div class="packet-raw-data">
+                                    <h4 class="section-title">Nespracované dáta</h4>
+                                    <div class="raw-data" id="detailsData">${details}</div>
+                                </div>
+                                ${isUnknownData ? `
+                                <div class="decode-options">
+                                    <h4 class="section-title">Nastavenia dekódovania</h4>
+                                    
+                                    <div class="option-row">
+                                        <label for="decodeType">Typ dekódovania:</label>
+                                        <select id="decodeType" class="decode-select">
+                                            <option value="ascii" ${recommendedSettings.decodeType === 'ascii' ? 'selected' : ''}>ASCII</option>
+                                            <option value="utf-8" ${recommendedSettings.decodeType === 'utf-8' ? 'selected' : ''}>UTF-8</option>
+                                            <option value="utf-16" ${recommendedSettings.decodeType === 'utf-16' ? 'selected' : ''}>UTF-16</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="option-row">
+                                        <label for="startPos">Začiatok (index):</label>
+                                        <input type="number" id="startPos" class="decode-input" value="${recommendedSettings.startPos}">
+                                    </div>
+                                    
+                                    <div class="option-row">
+                                        <label for="endPos">Koniec (index):</label>
+                                        <input type="text" id="endPos" class="decode-input" value="${recommendedSettings.endPos}">
+                                    </div>
+                                </div>` : ''}
+                            </div>
+                        `;
 
-                        if (isUnknownData) {
-                            extraOptions = `
-                    <label for="decodeType"><b>Typ dekódovania:</b></label>
-                    <select id="decodeType" class="swal-select" style="width:100%;">
-                        <option value="ascii">ASCII</option>
-                        <option value="utf-8">UTF-8</option>
-                        <option value="utf-16">UTF-16</option>
-                    </select><br><br>
-                    <label for="startPos"><b>Začiatok (index):</b></label>
-                    <input type="number" id="startPos" class="swal-input" placeholder="0" value="0">
-                    <label for="endPos"><b>Koniec (index):</b></label>
-                    <input type="number" id="endPos" class="swal-input" placeholder="10" value="10"><br>
-                `;
-                        }
-
-                        await Swal.fire({
-                            title: 'Dekódovanie dát',
-                            html: `
-                    <b>Časový záznam:</b> ${data.timestamp} <br>
-                    ${data.duration_s > 0 ? `<b>Dĺžka:</b> ${data.duration_s} s <br>` : ''}
-                    <b>Event:</b> ${data.event} <br>
-                    ${data.source ? `<b>Zdroj:</b> ${data.source} <br>` : ''}
-                    ${data.destination ? `<b>Cieľ:</b> ${data.destination} <br>` : ''}
-                    ${data.channel_number ? `<b>Číslo kanálu:</b> ${data.channel_number} <br>` : ''}
-                    <b>Frekvencia:</b> ${data.frequency} MHz <br>
-                    ${data.timeslot ? `<b>Timeslot:</b> ${data.timeslot} <br>` : ''}
-                    ${data.color_code ? `<b>Color code:</b> ${data.color_code} <br>` : ''}
-                    ${details ? `<b>Detaily:</b><span id="detailsData"> ${details} </span><br>` : ''}
-                    ${extraOptions}
-                `,
+                        const swalConfig = {
+                            title: isUnknownData ? 'Dekódovanie neznámeho paketu' : 'Dekódovanie dátového paketu',
+                            html: sweetAlertContent,
                             showCancelButton: true,
                             confirmButtonText: 'Dekódovať',
                             cancelButtonText: 'Zatvoriť',
+                            customClass: {
+                                container: 'decode-swal-container',
+                                popup: 'decode-swal-popup',
+                                content: 'decode-swal-content'
+                            },
                             preConfirm: async () => {
-                                let rawData = document.getElementById("detailsData").innerText;
+                                try {
+                                    let rawData = document.getElementById("detailsData").innerText;
+                                    rawData = rawData.split(":").slice(1).join(":");
 
-                                rawData = rawData.split(":").slice(1).join(":");
+                                    let payload = {details: rawData};
 
-                                let payload = {details: rawData};
+                                    if (isUnknownData) {
+                                        payload.decodeType = document.getElementById("decodeType").value;
+                                        payload.startPos = parseInt(document.getElementById("startPos").value);
+                                        
+                                        // Handle negative end position correctly
+                                        const endPosValue = document.getElementById("endPos").value;
+                                        if (endPosValue.startsWith('-')) {
+                                            // Keep as string for API to handle
+                                            payload.endPos = endPosValue;
+                                        } else {
+                                            payload.endPos = parseInt(endPosValue);
+                                        }
+                                    }
 
-                                if (isUnknownData) {
-                                    payload.decodeType = document.getElementById("decodeType").value;
-                                    payload.startPos = parseInt(document.getElementById("startPos").value);
-                                    payload.endPos = parseInt(document.getElementById("endPos").value);
+                                    const endpoint = isShortData
+                                        ? '/api/decode-short-data-packet/'
+                                        : '/api/decode-unknown-packet/';
+
+                                    const decodeResponse = await fetch(endpoint, {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json'
+                                        },
+                                        body: JSON.stringify(payload)
+                                    });
+
+                                    if (!decodeResponse.ok) {
+                                        const errorData = await decodeResponse.json();
+                                        throw new Error(errorData.error || `Chyba: ${decodeResponse.status}`);
+                                    }
+
+                                    const result = await decodeResponse.json();
+                                    
+                                    if (result.decoded_details) {
+                                        return {
+                                            text: result.decoded_details,
+                                            containsGPRMC: result.decoded_details.includes('$GPRMC')
+                                        };
+                                    } else {
+                                        throw new Error('Nepodarilo sa dekódovať dáta.');
+                                    }
+                                } catch (error) {
+                                    Swal.showValidationMessage(`Chyba dekódovania: ${error.message}`);
+                                    return false;
                                 }
+                            }
+                        };
 
-
-                                const endpoint = isShortData
-                                    ? '/api/decode-short-data-packet/'
-                                    : '/api/decode-unknown-packet/';
-
-
-                                const decodeResponse = await fetch(endpoint, {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json'
-                                    },
-                                    body: JSON.stringify(payload)
+                        const result = await Swal.fire(swalConfig);
+                        
+                        if (result.isConfirmed && result.value) {
+                            const decodedText = result.value.text;
+                            const containsGPRMC = result.value.containsGPRMC;
+                            
+                            // Basic HTML for the result display
+                            let resultHtml = `
+                                <div class="decoded-result">
+                                    <h4>Výsledok dekódovania:</h4>
+                                    <div class="decoded-content">${decodedText}</div>
+                                </div>
+                            `;
+                            
+                            // Extended confirmation if GPS data is detected
+                            if (containsGPRMC) {
+                                await Swal.fire({
+                                    title: 'GPS dáta detekované!',
+                                    html: `
+                                        ${resultHtml}
+                                        <div class="gps-detected">
+                                            <p>V dekódovaných dátach sa našli GPS súradnice (GPRMC formát).</p>
+                                        </div>
+                                    `,
+                                    icon: 'success',
+                                    showCancelButton: true,
+                                    confirmButtonText: 'Pridať na mapu',
+                                    cancelButtonText: 'Zatvoriť',
+                                    customClass: {
+                                        confirmButton: 'gps-add-btn'
+                                    }
+                                }).then(async (gpsResult) => {
+                                    if (gpsResult.isConfirmed) {
+                                        try {
+                                            const cleanedGprmcData = decodedText.replace(/\\u0000/g, '').replace(/[^\x20-\x7E\n]/g, '');
+                                            
+                                            let gprmcMatch = /(\$GPRMC,[^*]+\*[A-F0-9]{2})/.exec(cleanedGprmcData);
+                                            const gprmcToSend = gprmcMatch ? gprmcMatch[1] : cleanedGprmcData;
+                                            
+                                            console.log("Sending GPRMC data:", gprmcToSend);
+                                            
+                                            const gpsResponse = await fetch(`/api/create-gps-entry/${eventId}/`, {
+                                                method: 'POST',
+                                                headers: {
+                                                    'Content-Type': 'application/json'
+                                                },
+                                                body: JSON.stringify({
+                                                    gprmc_data: gprmcToSend
+                                                })
+                                            });
+                                            
+                                            if (!gpsResponse.ok) {
+                                                const errorData = await gpsResponse.json();
+                                                throw new Error(errorData.error || `Chyba: ${gpsResponse.status}`);
+                                            }
+                                            
+                                            const gpsResult = await gpsResponse.json();
+                                            
+                                            Swal.fire({
+                                                title: 'Úspech',
+                                                text: 'GPS súradnice boli úspešne pridané do mapy!',
+                                                icon: 'success',
+                                                confirmButtonText: 'Zobraziť na mape',
+                                                showCancelButton: true,
+                                                cancelButtonText: 'Zatvoriť'
+                                            }).then((result) => {
+                                                if (result.isConfirmed) {
+                                                    window.location.href = '/mapa/';
+                                                }
+                                            });
+                                        } catch (error) {
+                                            Swal.fire({
+                                                title: 'Chyba',
+                                                text: `Nepodarilo sa pridať GPS súradnice: ${error.message}`,
+                                                icon: 'error',
+                                                confirmButtonText: 'Zatvoriť'
+                                            });
+                                        }
+                                    }
                                 });
-
-                                if (!decodeResponse.ok) {
-                                    throw new Error(`Chyba: ${decodeResponse.status}`);
-                                }
-
-                                const result = await decodeResponse.json();
-
-                                if (result.decoded_details) {
-                                    Swal.fire({
+                            } else {
+                                // Standard success confirmation or error message
+                                // Check if the decoded text contains error message
+                                if (decodedText.startsWith("Chyba pri dekódovaní")) {
+                                    await Swal.fire({
+                                        title: 'Chyba dekódovania',
+                                        html: `
+                                            <div class="decoded-result error">
+                                                <h4>Nastala chyba pri dekódovaní:</h4>
+                                                <div class="decoded-content error-content">${decodedText}</div>
+                                            </div>
+                                        `,
+                                        icon: 'error',
+                                        confirmButtonText: 'Zatvoriť'
+                                    });
+                                } else {
+                                    await Swal.fire({
                                         title: 'Úspešne dekódované',
-                                        text: result.decoded_details,
+                                        html: resultHtml,
                                         icon: 'success',
                                         confirmButtonText: 'Zatvoriť'
                                     });
                                 }
-                                else {
-                                    Swal.fire({
-                                        title: 'Chyba!',
-                                        text: 'Nepodarilo sa dekódovať dáta.',
-                                        icon: 'error',
-                                        confirmButtonText: 'Zatvoriť'
-                                    });
-                                }
                             }
-                        });
+                        }
                     } else {
                         // klasické zobrazenie detailov
                         Swal.fire({
                             title: 'Detaily udalosti',
                             html: `
-                    <b>Časový záznam:</b> ${data.timestamp} <br>
-                    ${data.duration_s > 0 ? `<b>Dĺžka:</b> ${data.duration_s} s <br>` : ''}
-                    <b>Event:</b> ${data.event} <br>
-                    ${data.source ? `<b>Zdroj:</b> ${data.source} <br>` : ''}
-                    ${data.destination ? `<b>Cieľ:</b> ${data.destination} <br>` : ''}
-                    <b>Frekvencia:</b> ${data.frequency} MHz <br>
-                    ${details ? `<b>Detaily:</b> ${details} <br>` : ''}
-                `,
+                                <div class="event-details">
+                                    <div class="info-row"><span class="info-label">Časový záznam:</span> <span class="info-value">${data.timestamp}</span></div>
+                                    ${data.duration_s > 0 ? `<div class="info-row"><span class="info-label">Dĺžka:</span> <span class="info-value">${data.duration_s} s</span></div>` : ''}
+                                    <div class="info-row"><span class="info-label">Event:</span> <span class="info-value">${data.event}</span></div>
+                                    ${data.source ? `<div class="info-row"><span class="info-label">Zdroj:</span> <span class="info-value">${data.source}</span></div>` : ''}
+                                    ${data.destination ? `<div class="info-row"><span class="info-label">Cieľ:</span> <span class="info-value">${data.destination}</span></div>` : ''}
+                                    <div class="info-row"><span class="info-label">Frekvencia:</span> <span class="info-value">${data.frequency} MHz</span></div>
+                                    ${details ? `<div class="info-row"><span class="info-label">Detaily:</span> <span class="info-value">${details}</span></div>` : ''}
+                                </div>
+                            `,
                             icon: 'info',
                             confirmButtonText: 'Zatvoriť'
                         });
                     }
                 } catch (error) {
-                    Swal.fire('Chyba!', 'Nepodarilo sa načítať detaily.', 'error');
+                    Swal.fire({
+                        title: 'Chyba!',
+                        text: 'Nepodarilo sa načítať detaily: ' + error.message,
+                        icon: 'error',
+                        confirmButtonText: 'Zatvoriť'
+                    });
                 }
             });
+
             $('#myTable tbody').on('click', '.delete-btn', function () {
                 let eventId = $(this).data('id');
 
@@ -689,7 +856,6 @@
 
     <script>
         $(document).ready(function() {
-            // Přidání animace pro přepínání rozšířených filtrů
             $('#toggleAdvancedFilters').on('click', function() {
                 const container = $('#advancedFiltersContainer');
                 const icon = $(this).find('.toggle-icon');
@@ -704,8 +870,7 @@
                 }
             });
             
-            // Původní inicializace z připraveného kódu
-            // ...existing code...
         });
     </script>
 {% endblock %}
+```

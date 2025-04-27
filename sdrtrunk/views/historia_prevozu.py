@@ -1,5 +1,7 @@
 import binascii
+import re
 from datetime import datetime
+from decimal import Decimal
 
 from django.db.models import Q
 from django.http import JsonResponse
@@ -9,7 +11,7 @@ from django_datatables_view.base_datatable_view import BaseDatatableView
 from rest_framework.utils import json
 from django.contrib.auth.decorators import login_required
 
-from sdrtrunk.models import DMRData
+from sdrtrunk.models import DMRData, GPSData
 
 
 @login_required
@@ -28,7 +30,7 @@ def available_events(request):
 
 def available_detail_types(request):
     try:
-        known_types = ["DEFINED SHORT DATA PACKET", "UNKNOWN PACKET", "UDP", "ARS"]
+        known_types = ["DEFINED SHORT DATA PACKET", "UNKNOWN PACKET", "UDP", "ARS", "IP", "PORT"]
         return JsonResponse({"detail_types": known_types})
     except Exception as e:
         return JsonResponse({"error": "Nepodarilo sa načítať dostupné typy detailov."}, status=500)
@@ -96,7 +98,6 @@ class ApiDmrHistory(BaseDatatableView):
         if filter_details:
             qs = qs.filter(details__icontains=filter_details)
 
-        # Filtrování podle délky trvání
         min_duration = self.request.GET.get('minDuration', None)
         if min_duration and min_duration != '':
             try:
@@ -113,12 +114,10 @@ class ApiDmrHistory(BaseDatatableView):
             except (ValueError, TypeError):
                 pass
 
-        # Filtrování podle timeslot
         filter_timeslot = self.request.GET.get('filterTimeslot', None)
         if filter_timeslot and filter_timeslot != '':
             qs = qs.filter(timeslot=filter_timeslot)
 
-        # Filtrování podle color code
         filter_color_code = self.request.GET.get('filterColorCode', None)
         if filter_color_code and filter_color_code != '':
             qs = qs.filter(color_code=filter_color_code)
@@ -182,14 +181,14 @@ def decode_unknown_packet(request):
 
             if details and decode_type and start_pos is not None and end_pos is not None:
                 decoded_details = decode_unknown_packet_function(details, decode_type, start_pos, end_pos)
-                if decoded_details == "Chyba pri dekódovaní":
+                if decoded_details.startswith("Chyba pri dekódovaní"):
                     return JsonResponse({'error': decoded_details}, status=400)
                 return JsonResponse({'decoded_details': decoded_details})
             else:
-                return JsonResponse({'error': 'No details provided'}, status=400)
+                return JsonResponse({'error': 'Neboli poskytnuté potrebné údaje'}, status=400)
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
-    return JsonResponse({'error': 'Invalid request method'}, status=405)
+            return JsonResponse({'error': f'Chyba: {str(e)}'}, status=500)
+    return JsonResponse({'error': 'Neplatná metóda požiadavky'}, status=405)
 
 
 def decode_short_data_packet_function(data):
@@ -206,24 +205,190 @@ def decode_short_data_packet_function(data):
             i += delta
         return str(out, "utf-16-be")
     except Exception as e:
-        return f"Chyba pri dekódovaní"
+        return f"Chyba pri dekódovaní: {str(e)}"
 
 def decode_unknown_packet_function(data, decodeType, startPos, endPos):
     try:
         decodeType = decodeType.strip().lower()
-        clean_data = ''.join(filter(str.isalnum, data))
-        byte_data = binascii.unhexlify(clean_data)
-        start_byte = int(startPos) if startPos != "" and startPos is not None else 0
-        end_byte = int(endPos) if endPos != "" and endPos is not None else len(byte_data)
-        byte_segment = byte_data[start_byte:end_byte]
-        if decodeType == 'ascii':
-            return byte_segment.decode("ascii", errors="replace")
-        elif decodeType == 'utf-8':
-            return byte_segment.decode("utf-8", errors="replace")
-        elif decodeType == 'utf-16':
-            return byte_segment.decode("utf-16", errors="replace")
+        
+        clean_data = ''.join(filter(lambda c: c.upper() in '0123456789ABCDEF', data))
+        
+        if not clean_data:
+            return "Chyba pri dekódovaní: Neplatné hexadecimálne dáta"
+        
+        try:
+            byte_data = binascii.unhexlify(clean_data)
+        except binascii.Error:
+            if len(clean_data) % 2 != 0:
+                clean_data += '0'
+                try:
+                    byte_data = binascii.unhexlify(clean_data)
+                except binascii.Error:
+                    return "Chyba pri dekódovaní: Neplatné hexadecimálne dáta"
+            else:
+                return "Chyba pri dekódovaní: Neplatné hexadecimálne dáta"
+
+        try:
+            if isinstance(endPos, str) and endPos.startswith('-'):
+                end_byte = len(byte_data) + int(endPos)
+            else:
+                end_byte = int(endPos) if endPos != "" and endPos is not None else len(byte_data)
+                
+            start_byte = int(startPos) if startPos != "" and startPos is not None else 0
+            
+            if start_byte < 0:
+                start_byte = 0
+            if end_byte > len(byte_data):
+                end_byte = len(byte_data)
+            if start_byte >= end_byte:
+                return "Chyba pri dekódovaní: Neplatný rozsah indexov (začiatok >= koniec)"
+                
+            byte_segment = byte_data[start_byte:end_byte]
+        except (ValueError, TypeError):
+            return "Chyba pri dekódovaní: Neplatné indexy"
+        
+        if not byte_segment:
+            return "Nič na dekódovanie v zadanom rozsahu"
+            
+        try:
+            if decodeType == 'ascii':
+                result = byte_segment.decode("ascii", errors="replace")
+            elif decodeType == 'utf-8':
+                result = byte_segment.decode("utf-8", errors="replace")
+            elif decodeType == 'utf-16':
+                result = byte_segment.decode("utf-16", errors="replace")
+            else:
+                return "Nepodporované kódovanie"
+                
+            if all(c == '�' for c in result if c not in ' \t\n\r'):
+                return "Nepodarilo sa dekódovať: žiadne platné znaky v danom kódovaní"
+            
+                
+            return result
+        except Exception as e:
+            return f"Chyba pri dekódovaní: {str(e)}"
+    except Exception as e:
+        return f"Chyba pri dekódovaní: {str(e)}"
+
+
+def parse_gprmc_data(gprmc_text):
+    try:
+        gprmc_text = gprmc_text.replace('\x00', '').replace('\\u0000', '')
+        gprmc_text = ''.join(c for c in gprmc_text if c.isprintable() or c.isspace())
+        
+        
+        gprmc_pattern = r'\$GPRMC,([^*]+)\*?[A-F0-9]{0,2}'
+        match = re.search(gprmc_pattern, gprmc_text)
+        
+        if not match:
+            alt_pattern = r'GPRMC,([0-9]+\.[0-9]+,A,[0-9.]+,[NS],[0-9.]+,[EW])'
+            alt_match = re.search(alt_pattern, gprmc_text)
+            if alt_match:
+                gprmc_parts = alt_match.group(1).split(',')
+            else:
+                return None
+            
+        parts = match.group(1).split(',')
+        
+       
+        if len(parts) < 9 or parts[1] != 'A':
+            return None
+            
+        
+        lat = parts[2]
+        lat_dir = parts[3] 
+        
+        lon = parts[4]
+        lon_dir = parts[5] 
+        
+        print(f"Extracted coords: Lat={lat}{lat_dir}, Lon={lon}{lon_dir}")
+        
+       
+        try:
+            lat_deg = float(lat[:2])
+            lat_min = float(lat[2:])
+            latitude = lat_deg + (lat_min / 60.0)
+            if lat_dir == 'S':
+                latitude = -latitude
+                
+           
+            lon_deg = float(lon[:3])
+            lon_min = float(lon[3:])
+            longitude = lon_deg + (lon_min / 60.0)
+            if lon_dir == 'W':
+                longitude = -longitude
+                
+        except (ValueError, IndexError) as e:
+            return None
+            
+        return {
+            'latitude': Decimal(str(latitude)),
+            'longitude': Decimal(str(longitude)),
+            'is_valid': True
+        }
+    except Exception as e:
+        print(f"GPRMC parsing error: {e}")
+        return None
+
+@csrf_exempt
+def create_gps_entry(request, event_id):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Neplatná metóda požiadavky'}, status=405)
+        
+    try:
+        data = json.loads(request.body)
+        gprmc_data = data.get('gprmc_data')
+        
+        if not gprmc_data:
+            return JsonResponse({'error': 'Chýbajúce GPRMC dáta'}, status=400)
+        
+        print(f"Prijaté GPRMC dáta: {gprmc_data}")
+        
+        parsed_gps = parse_gprmc_data(gprmc_data)
+        
+        if not parsed_gps:
+            gprmc_pattern = r'(\$GPRMC,[^*]+\*[A-F0-9]{2})'
+            match = re.search(gprmc_pattern, gprmc_data)
+            if match:
+                clean_gprmc = match.group(1)
+                print(f"Skúšam s vyčisteným GPRMC: {clean_gprmc}")
+                parsed_gps = parse_gprmc_data(clean_gprmc)
+        
+        if not parsed_gps or not parsed_gps.get('is_valid'):
+            return JsonResponse({'error': 'Nepodarilo sa získať platné GPS súradnice z dát'}, status=400)
+            
+        latitude = parsed_gps.get('latitude')
+        longitude = parsed_gps.get('longitude')
+        
+        print(f"Spracované súradnice: Lat={latitude}, Lon={longitude}")
+            
+        dmr_data = get_object_or_404(DMRData, event_id=event_id)
+        
+        existing_gps = GPSData.objects.filter(dmr_data=dmr_data).first()
+        if existing_gps:
+            existing_gps.latitude = latitude
+            existing_gps.longitude = longitude
+            existing_gps.save()
+            return JsonResponse({
+                'message': 'GPS dáta úspešne aktualizované',
+                'latitude': str(latitude),
+                'longitude': str(longitude)
+            })
         else:
-            return "Nepodporované kódovanie"
-    except Exception:
-        return "Chyba pri dekódovaní"
+            gps_entry = GPSData.objects.create(
+                dmr_data=dmr_data,
+                latitude=latitude,
+                longitude=longitude
+            )
+            return JsonResponse({
+                'message': 'GPS dáta boli úspešne pridané do mapy',
+                'latitude': str(latitude),
+                'longitude': str(longitude)
+            })
+            
+    except Exception as e:
+        print(f"Chyba v create_gps_entry: {e}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'error': f'Nepodarilo sa pridať GPS súradnice: {str(e)}'}, status=500)
 

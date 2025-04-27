@@ -24,7 +24,7 @@ from sdrtrunk.views import statistiky, prehlad, historia_prevozu, mapa, PieChart
     update_bat_path, start_restart_sdrtrunk, delete_dmr_data, ApiGpsHistory, add_gps_data, \
     delete_gps_data, available_events, load_frequencies, add_monitored_channel, remove_monitored_channel, \
     load_playlist_files, select_xml, get_selected_playlist, get_selected_frequencies, currently_monitored_frequencies, \
-    decode_short_data_packet, clear_monitored_channels, decode_unknown_packet, available_detail_types
+    decode_short_data_packet, clear_monitored_channels, decode_unknown_packet, available_detail_types, create_gps_entry
 
 urlpatterns = [
     path('', prehlad, name='prehlad'),
@@ -45,6 +45,7 @@ urlpatterns = [
     path('api/dmr-delete/<int:event_id>/', delete_dmr_data, name='delete_dmr_data'),
     path('api/decode-short-data-packet/', decode_short_data_packet, name='decode-short-data-packet'),
     path('api/decode-unknown-packet/', decode_unknown_packet, name='decode-unknown-packet'),
+    path('api/create-gps-entry/<int:event_id>/', create_gps_entry, name='create-gps-entry'),
 
     # Mapa
     path('mapa/', mapa, name='mapa'),

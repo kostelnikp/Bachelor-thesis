@@ -19,7 +19,15 @@ class PieChartData(APIView):
     """API endpoint pre dáta koláčového grafu (rozdelenie podľa typu eventu)."""
 
     def get(self, request):
+        start_date = request.GET.get('start_date', '')
+        end_date = request.GET.get('end_date', '')
+
         data = DMRData.objects.all()
+        if start_date:
+            data = data.filter(timestamp__date__gte=start_date)
+        if end_date:
+            data = data.filter(timestamp__date__lte=end_date)
+            
         event_data = data.values_list('event', flat=True)
         event_count = Counter(event_data)
 
@@ -86,7 +94,14 @@ class FrequencyChartData(APIView):
     """
 
     def get(self, request):
+        start_date = request.GET.get('start_date', '')
+        end_date = request.GET.get('end_date', '')
+        
         data = DMRData.objects.all()
+        if start_date:
+            data = data.filter(timestamp__date__gte=start_date)
+        if end_date:
+            data = data.filter(timestamp__date__lte=end_date)
 
         freq_data = data.values('frequency') \
             .annotate(count=Count('id')) \

@@ -35,7 +35,26 @@
 
             <div id="right-card">
                 <div class="chart-container">
-
+                    <div class="filter-bar">
+                        <div class="date-input-container">
+                            <label for="start-date-pie">
+                                <i class="fa fa-calendar"></i> Od:
+                            </label>
+                            <input type="text" id="start-date-pie" class="date-picker-pie" placeholder="Vyber dátum">
+                            <button class="clear-btn" onclick="clearDate('start-date-pie')">
+                                <i class="fa fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="date-input-container">
+                            <label for="end-date-pie">
+                                <i class="fa fa-calendar"></i> Do:
+                            </label>
+                            <input type="text" id="end-date-pie" class="date-picker-pie" placeholder="Vyber dátum">
+                            <button class="clear-btn" onclick="clearDate('end-date-pie')">
+                                <i class="fa fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
 
                     <div id="pie-chart-event-count" class="chart-background"></div>
                 </div>
@@ -45,22 +64,46 @@
         <div id="central-card">
             <div id="left-card">
                 <div class="chart-container">
+                    <div class="filter-bar">
+                        <div class="date-input-container">
+                            <label for="start-date-freq">
+                                <i class="fa fa-calendar"></i> Od:
+                            </label>
+                            <input type="text" id="start-date-freq" class="date-picker-freq" placeholder="Vyber dátum">
+                            <button class="clear-btn" onclick="clearDate('start-date-freq')">
+                                <i class="fa fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="date-input-container">
+                            <label for="end-date-freq">
+                                <i class="fa fa-calendar"></i> Do:
+                            </label>
+                            <input type="text" id="end-date-freq" class="date-picker-freq" placeholder="Vyber dátum">
+                            <button class="clear-btn" onclick="clearDate('end-date-freq')">
+                                <i class="fa fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
                     <div id="frequency-chart" class="chart-background"></div>
                 </div>
             </div>
             <div id="right-card">
                 <div class="chart-container">
                     <div class="chart-controls">
-                        <button id="toggle-chart-btn">Prepni na Sankey</button>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <label for="max-links">Max počet spojení:</label>
-                            <select id="max-links">
-                                <option value="5">5</option>
-                                <option value="10">10</option>
-                                <option value="20" selected>20</option>
-                                <option value="30">30</option>
-                                <option value="50">50</option>
-                                <option value="100">100</option>
+                        <button id="toggle-chart-btn" class="chart-toggle-btn">
+                            <i class="fas fa-sync-alt"></i> Prepnúť na zobrazenie typu Sankey
+                        </button>
+                        <div class="control-options">
+                            <label for="max-links" class="control-label" title="Nastavte počet najvýznamnejších komunikačných spojení, ktoré sa zobrazia v grafe">
+                                <i class="fas fa-sliders-h"></i> Počet najaktívnejších spojení:
+                            </label>
+                            <select id="max-links" class="control-select" title="Vyberte maximálny počet komunikačných spojení zobrazených v grafe">
+                                <option value="5">5 spojení</option>
+                                <option value="10">10 spojení</option>
+                                <option value="20" selected>20 spojení</option>
+                                <option value="30">30 spojení</option>
+                                <option value="50">50 spojení</option>
+                                <option value="100">100 spojení</option>
                             </select>
                         </div>
                     </div>
@@ -168,7 +211,9 @@
         }
 
         .filter-bar input.date-picker,
-        .filter-bar input.date-picker-heatmap {
+        .filter-bar input.date-picker-heatmap,
+        .filter-bar input.date-picker-pie,
+        .filter-bar input.date-picker-freq {
             width: 140px;
             padding: 6px;
             border: none;
@@ -181,12 +226,16 @@
         }
 
         .filter-bar input.date-picker,
-        .filter-bar input.date-picker-heatmap {
+        .filter-bar input.date-picker-heatmap,
+        .filter-bar input.date-picker-pie,
+        .filter-bar input.date-picker-freq {
             background: #eef5ff;
         }
 
         .filter-bar input.date-picker,
-        .filter-bar input.date-picker-heatmap {
+        .filter-bar input.date-picker-heatmap,
+        .filter-bar input.date-picker-pie,
+        .filter-bar input.date-picker-freq {
             border: 1px solid #ffffff;
             box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
         }
@@ -252,6 +301,67 @@
             background-color: #0056b3;
         }
 
+        .chart-toggle-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .chart-toggle-btn:hover {
+            background-color: #0056b3;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .control-options {
+            display: flex;
+            align-items: center;
+            background-color: #f0f4f8;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid #dbe1e8;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .control-label {
+            font-weight: bold;
+            font-size: 14px;
+            color: #555;
+            margin-right: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .control-select {
+            padding: 5px 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #fff;
+            font-size: 14px;
+            color: #333;
+            min-width: 100px;
+            cursor: pointer;
+            transition: border-color 0.2s ease;
+        }
+        
+        .control-select:focus {
+            border-color: #007bff;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+        
+        [title] {
+            cursor: help;
+        }
 
     </style>
 
@@ -274,8 +384,12 @@
 
 
     <script>
-        function loadPieChart() {
-            fetch('/api/pie-chart/')
+        function loadPieChart(startDate = '', endDate = '') {
+            let queryParams = new URLSearchParams();
+            if (startDate) queryParams.append('start_date', startDate);
+            if (endDate) queryParams.append('end_date', endDate);
+
+            fetch(`/api/pie-chart/?${queryParams.toString()}`)
                 .then(response => response.json())
                 .then(data => {
                     Highcharts.chart('pie-chart-event-count', {
@@ -289,6 +403,22 @@
                                 fontSize: '18px',
                                 fontWeight: 'bold',
                                 color: '#333333',
+                            },
+                        },
+                        subtitle: {
+                            text: `Časový rozsah: ${startDate ? new Date(startDate).toLocaleDateString('sk-SK', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                            }) : 'začiatok'} - ${endDate ? new Date(endDate).toLocaleDateString('sk-SK', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                            }) : 'koniec'} (${startDate || endDate ? "filtrované" : "všetky dáta"})`,
+                            style: {
+                                fontSize: '14px',
+                                color: '#666666',
+                                padding: '0 0 10px 0'
                             },
                         },
                         exporting: {enabled: false},
@@ -358,7 +488,7 @@
                                 day: '2-digit',
                                 month: '2-digit',
                                 year: 'numeric'
-                            }) : 'koniec'}`,
+                            }) : 'koniec'} ${startDate || endDate ? "(filtrované)" : "(všetky dáta)"}`,
                             style: {
                                 fontSize: '14px',
                                 color: '#666666',
@@ -399,8 +529,12 @@
                 });
         }
 
-        function loadFrequencyChart() {
-            fetch('/api/frequency-chart/')
+        function loadFrequencyChart(startDate = '', endDate = '') {
+            let queryParams = new URLSearchParams();
+            if (startDate) queryParams.append('start_date', startDate);
+            if (endDate) queryParams.append('end_date', endDate);
+
+            fetch(`/api/frequency-chart/?${queryParams.toString()}`)
                 .then(response => response.json())
                 .then(data => {
                     Highcharts.chart('frequency-chart', {
@@ -414,6 +548,22 @@
                                 fontSize: '18px',
                                 fontWeight: 'bold',
                                 color: '#333333',
+                            },
+                        },
+                        subtitle: {
+                            text: `Časový rozsah: ${startDate ? new Date(startDate).toLocaleDateString('sk-SK', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                            }) : 'začiatok'} - ${endDate ? new Date(endDate).toLocaleDateString('sk-SK', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                            }) : 'koniec'} ${startDate || endDate ? "(filtrované)" : "(všetky dáta)"}`,
+                            style: {
+                                fontSize: '14px',
+                                color: '#666666',
+                                padding: '0 0 10px 0'
                             },
                         },
                         exporting: {enabled: false},
@@ -456,7 +606,13 @@
 
         document.getElementById("toggle-chart-btn").addEventListener("click", function () {
             isChord = !isChord;
-            this.textContent = isChord ? "Prepni na Sankey" : "Prepni na Chord";
+            if (isChord) {
+                this.innerHTML = '<i class="fas fa-sync-alt"></i> Prepnúť na prehľadný Sankey diagram';
+                this.title = "Kliknutím zmeníte typ grafu na Sankey diagram";
+            } else {
+                this.innerHTML = '<i class="fas fa-sync-alt"></i> Prepnúť na detailný Chord diagram'; 
+                this.title = "Kliknutím zmeníte typ grafu na Chord diagram";
+            }
             loadDynamicChart();
         });
 
@@ -536,6 +692,22 @@
                                 fontSize: '20px',
                                 fontWeight: 'bold',
                                 color: '#333333',
+                            },
+                        },
+                        subtitle: {
+                            text: `Časový rozsah: ${startDate ? new Date(startDate).toLocaleDateString('sk-SK', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                            }) : 'začiatok'} - ${endDate ? new Date(endDate).toLocaleDateString('sk-SK', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                            }) : 'koniec'} ${startDate || endDate ? "(filtrované)" : "(všetky dáta)"}`,
+                            style: {
+                                fontSize: '14px',
+                                color: '#666666',
+                                padding: '0 0 10px 0'
                             },
                         },
                         xAxis: {
@@ -648,6 +820,24 @@
             loadHeatmapChart(startFormatted, endFormatted);
         }
 
+        function applyFiltersFrequency() {
+            const startDate = document.getElementById('start-date-freq').value;
+            const endDate = document.getElementById('end-date-freq').value;
+            let startFormatted = formatDateForAPI(startDate);
+            let endFormatted = formatDateForAPI(endDate);
+
+            loadFrequencyChart(startFormatted, endFormatted);
+        }
+
+        function applyFiltersPie() {
+            const startDate = document.getElementById('start-date-pie').value;
+            const endDate = document.getElementById('end-date-pie').value;
+            let startFormatted = formatDateForAPI(startDate);
+            let endFormatted = formatDateForAPI(endDate);
+
+            loadPieChart(startFormatted, endFormatted);
+        }
+
         function loadCharts() {
             loadPieChart();
             loadBarChart();
@@ -658,8 +848,15 @@
 
         function clearDate(id) {
             document.getElementById(id).value = "";
-            applyFilters();
-            applyFiltersHeatmap();
+            if (id.includes('start-date-pie') || id.includes('end-date-pie')) {
+                applyFiltersPie();
+            } else if (id.includes('start-date-freq') || id.includes('end-date-freq')) {
+                applyFiltersFrequency();
+            } else if (id.includes('start-date-heatmap') || id.includes('end-date-heatmap')) {
+                applyFiltersHeatmap();
+            } else {
+                applyFilters();
+            }
         }
 
         document.addEventListener("DOMContentLoaded", function () {
@@ -668,6 +865,8 @@
             clearDate('end-date');
             clearDate('start-date-heatmap');
             clearDate('end-date-heatmap');
+            clearDate('start-date-freq');
+            clearDate('end-date-freq');
 
             const fromDatePicker = flatpickr("#start-date", {
                 dateFormat: "d.m.Y",
@@ -710,6 +909,50 @@
                 onChange: function (selectedDates, dateStr) {
                     fromDatePickerHeatmap.set("maxDate", dateStr);
                     applyFiltersHeatmap();
+                }
+            });
+
+            const fromDatePickerFreq = flatpickr("#start-date-freq", {
+                dateFormat: "d.m.Y",
+                locale: "sk",
+                static: true,
+                maxDate: "today",
+                onChange: function (selectedDates, dateStr) {
+                    toDatePickerFreq.set("minDate", dateStr);
+                    applyFiltersFrequency();
+                }
+            });
+
+            const toDatePickerFreq = flatpickr("#end-date-freq", {
+                dateFormat: "d.m.Y",
+                locale: "sk",
+                static: true,
+                maxDate: "today",
+                onChange: function (selectedDates, dateStr) {
+                    fromDatePickerFreq.set("maxDate", dateStr);
+                    applyFiltersFrequency();
+                }
+            });
+
+            const fromDatePickerPie = flatpickr("#start-date-pie", {
+                dateFormat: "d.m.Y",
+                locale: "sk",
+                static: true,
+                maxDate: "today",
+                onChange: function (selectedDates, dateStr) {
+                    toDatePickerPie.set("minDate", dateStr);
+                    applyFiltersPie();
+                }
+            });
+
+            const toDatePickerPie = flatpickr("#end-date-pie", {
+                dateFormat: "d.m.Y",
+                locale: "sk", 
+                static: true,
+                maxDate: "today",
+                onChange: function (selectedDates, dateStr) {
+                    fromDatePickerPie.set("maxDate", dateStr);
+                    applyFiltersPie();
                 }
             });
 

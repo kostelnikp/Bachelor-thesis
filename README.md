@@ -1,59 +1,73 @@
-# Bakalársky projekt – SDRTrunk + Django Server
+# Bachelor Project – SDRTrunk + Django Server
 
-Tento projekt slúži na spracovanie dát zachytených pomocou SDRTrunk aplikácie a ich následné spracovanie cez Django server bežiaci cez Daphne.
-
----
-
-## Hardvérové požiadavky
-
-- **RTL-SDR prijímač**
-- **Anténa**
-
-*Bez správneho pripojenia RTL-SDR prijímača a antény nebude možné zachytávať žiadne dáta.*
+This project is designed to process data captured using the **SDRTrunk** application and then handle it via a **Django server** running on **Daphne**.
 
 ---
 
-## Softvérové požiadavky
+##  Features
+
+-  **Real-time DMR Data Processing** – receives and processes DMR communication directly from SDRTrunk.  
+-  **Database Storage** – all captured communication is validated, transformed, and stored for further analysis.  
+-  **Statistics Dashboard** – interactive charts (powered by Highcharts) showing distribution of communication types and frequencies.  
+-  **Map Visualization** – events with GPS data are displayed on an interactive map (Leaflet.js), with detailed info on click.  
+-  **History View** – full event log with filtering, sorting, and search (DataTables integration).  
+-  **Record Management** – option to delete unnecessary or invalid records.  
+-  **Frequency Configuration** – manage and configure monitored frequencies via the web interface.  
+-  **Headless Mode Integration** – full compatibility with SDRTrunk running in headless mode.  
+-  **Unknown Packet Handling** – ability to capture, decode, and analyze raw/unknown DMR packets (e.g., GPS data in GPRMC format).  
+
+---
+
+## Hardware Requirements
+
+- **RTL-SDR receiver**
+- **Antenna**
+
+*Without a properly connected RTL-SDR receiver and antenna, no data can be captured.*
+
+---
+
+## Software Requirements
 
 - **Python 3.10+**
-- **pip** (package manager pre Python)
-- **Java Runtime Environment** (pre SDRTrunk)
-- **RTL-SDR ovládače** (nainštalované cez Zadig)
-- **Daphne** (súčasť requirements)
+- **pip** (Python package manager)
+- **Java Runtime Environment** (for SDRTrunk)
+- **RTL-SDR drivers** (installed via Zadig)
+- **Daphne** (included in requirements)
 
 ---
 
-## Inštalácia
+## Installation
 
-### 1. Inštalácia RTL-SDR ovládačov
+### 1. Installing RTL-SDR drivers
 
-- Stiahni aplikáciu **Zadig**: [https://zadig.akeo.ie/](https://zadig.akeo.ie/)
-- Pripoj RTL-SDR prijímač.
-- V Zadigu vyber zariadenie **Bulk-In, Interface 0**.
-- Klikni na **Install Driver** (WinUSB).
+- Download the **Zadig** application: [https://zadig.akeo.ie/](https://zadig.akeo.ie/)  
+- Plug in the RTL-SDR receiver.  
+- In Zadig, select the device **Bulk-In, Interface 0**.  
+- Click **Install Driver** (WinUSB).  
 
-### 2. Nastavenie Python servera
+### 2. Setting up the Python server
 
-1. Klonuj alebo stiahni tento projekt:
+1. Clone or download this project:
 
     ```bash
     cd WebSocketServer
     ```
 
-2. Vytvor virtuálne prostredie:
+2. Create a virtual environment:
 
     ```bash
     python -m venv venv
     venv\Scripts\activate     # Windows
     ```
 
-3. Inštaluj závislosti:
+3. Install dependencies:
 
     ```bash
     pip install -r requirements.txt
     ```
 
-4. Spusti server pomocou Daphne:
+4. Run the server with Daphne:
 
     ```bash
     daphne -b 127.0.0.1 -p 8000 dmrserver.asgi:application
@@ -61,26 +75,40 @@ Tento projekt slúži na spracovanie dát zachytených pomocou SDRTrunk aplikác
 
 ---
 
-## Používanie
+## Usage
 
-- Uisti sa, že máš správne pripojený RTL-SDR prijímač a anténu.
+- Make sure your RTL-SDR receiver and antenna are properly connected.
 
-### Nastavenie SDRTrunk
+### SDRTrunk Setup
 
-- **Pri prvom spustení SDRTrunk** je potrebné manuálne v grafickom rozhraní:
-  - Vytvoriť vlastné **playlisty** s nastaveným zdrojom signálu (napr. frekvencia, typ modulácie).
-  - Playlisty musia byť aktívne, aby SDRTrunk spracovával prijímané dáta.
-  - **V Playlist Manageri** musí byť vytvorený **prázdny playlist** s názvom **`monitored`**.
-    - Tento playlist je potrebný pre správne fungovanie správy kanálov.
-    - Bez neho nebude aplikácia správne spracovávať dátové streamy.
+- **On the first run of SDRTrunk**, you need to manually configure in the GUI:
+  - Create your own **playlists** with the configured signal source (e.g., frequency, modulation type).
+  - Playlists must be active in order for SDRTrunk to process the received data.
+  - In the **Playlist Manager**, you must create an **empty playlist** named **`monitored`**.
+    - This playlist is required for proper channel management.
+    - Without it, the application will not correctly process the data streams.
 
-- **Poznámka:** V **headless režime** (bez GUI) nie je možné playlisty vytvárať. Preto je nutné ich nastaviť v grafickom režime pred použitím headless režimu.
-
-
-    
-
-- Po spustení servera budú dáta odosielané cez websocket na Django server.
-- Django server ich spracuje v reálnom čase.
-- Všetko beží lokálne na `127.0.0.1:8000`.
+- **Note:** In **headless mode** (without GUI), it is not possible to create playlists.  
+  Therefore, they must be configured in GUI mode before using headless mode.
 
 ---
+
+- Once the server is running, data will be sent via WebSocket to the Django server.  
+- The Django server will process the data in real time.  
+- Everything runs locally on `127.0.0.1:8000`.  
+
+---
+
+## Screenshots
+
+### Homepage
+![Homepage](/Screenshots/Homepage.jpg?raw=true "Homepage")
+
+### History
+![Employees](/Screenshots/History.jpg?raw=true "Exercise")
+
+### Map
+![Workout](/Screenshots/Map.jpg?raw=true "Workout")
+
+### Statistics
+![Workout](/Screenshots/Statistics.jpg?raw=true "Workout")
